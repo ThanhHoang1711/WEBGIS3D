@@ -39,22 +39,22 @@ pnpm-debug.log*
 # =====================
 # Python / Django
 # =====================
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-venv/
+# __pycache__/
+# *.pyc
+# *.pyo
+# *.pyd
+# venv/
 
 # =====================
 # MEDIA / GIS DATA (RẤT QUAN TRỌNG)
 # =====================
-backend/media/
+# backend/media/
 *.glb
 *.gltf
 *.b3dm
 *.terrain
-tiles/
-tilesets/
+# tiles/
+# tilesets/
 
 # =====================
 # Cesium build
@@ -64,4 +64,4 @@ Sandcastle/
 # =====================
 # Django local settings
 # =====================
-backend/backend/settings.py
+# backend/backend/settings.py
