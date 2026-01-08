@@ -1,0 +1,67 @@
+# =====================
+# OS
+# =====================
+.DS_Store
+Thumbs.db
+
+# =====================
+# Node / Vue
+# =====================
+node_modules/
+dist/
+
+# =====================
+# Local env files
+# =====================
+.env
+.env.local
+.env.*.local
+
+# =====================
+# Log files
+# =====================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =====================
+# Editor / IDE
+# =====================
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# =====================
+# Python / Django
+# =====================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+
+# =====================
+# MEDIA / GIS DATA (RẤT QUAN TRỌNG)
+# =====================
+backend/media/
+*.glb
+*.gltf
+*.b3dm
+*.terrain
+tiles/
+tilesets/
+
+# =====================
+# Cesium build
+# =====================
+Build/
+Sandcastle/
+# =====================
+# Django local settings
+# =====================
+backend/backend/settings.py

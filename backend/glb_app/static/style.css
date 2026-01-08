@@ -1,0 +1,90 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.upload-container {
+    background: white;
+    border-radius: 15px;
+    padding: 20px 40px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    width: 100%;
+    max-width: 400px;
+    text-align: left;
+    animation: fadeIn 0.8s ease-in-out;
+}
+
+h1 {
+    color: #1e3c72;
+    margin-bottom: 10px;
+    font-size: 24px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+}
+
+input[type="file"] {
+    border: 2px dashed #2a5298;
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: #f9f9f9;
+    position: relative;
+    left: 60px;
+    width: 270px;
+}
+
+form p {
+    display: grid;
+    grid-template-columns: 0.5fr auto; /* cột label auto, cột input chiếm phần còn lại */
+    align-items: center;
+    gap: 10px; /* khoảng cách giữa label và input */
+}
+
+input[type="text"],
+input[type="number"] {
+    height: 25px;
+    width: 100%; /* chiếm hết cột input */
+}
+
+input[type="file"]:hover {
+    background-color: #eef2ff;
+    border-color: #1e3c72;
+}
+
+button {
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: transform 0.2s ease, background 0.3s ease;
+    margin-top: 10px;
+}
+
+button:hover {
+    background: linear-gradient(135deg, #2a5298, #1e3c72);
+    transform: translateY(-2px);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+#file-upload-button {
+    background-color: red;
+}
