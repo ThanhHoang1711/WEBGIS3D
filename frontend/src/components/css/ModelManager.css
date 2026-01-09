@@ -7,9 +7,10 @@
   width: 400px;
 }
 
+/* ===== MANAGER PANEL ===== */
 .manager-panel {
   position: fixed;
-  left: -350px; /* ✅ Giữ nguyên */
+  left: -350px; /* ✅ Ẩn bên ngoài màn hình */
   top: 150px;
   width: 350px;
   height: 600px;
@@ -17,13 +18,17 @@
   border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   z-index: 900;
-  display: flex; /* ✅ THAY ĐỔI: luôn flex, không none */
+  display: flex; /* ✅ Luôn flex để animation hoạt động */
   flex-direction: column;
   transition: left 0.3s ease;
+  visibility: hidden; /* ✅ THÊM: Ẩn hoàn toàn khi chưa active */
+  opacity: 0; /* ✅ THÊM: Trong suốt */
 }
 
 .manager-panel.active {
-  left: 20px; /* ✅ Slide vào khi active */
+  left: 20px;
+  visibility: visible; /* ✅ THÊM: Hiển thị khi active */
+  opacity: 1; /* ✅ THÊM: Không trong suốt */
 }
 
 /* ===== PANEL HEADER ===== */
@@ -421,10 +426,8 @@
   margin-top: 2px;
 }
 
-<<<<<<< Updated upstream
-=======
 /* ===== TOOLBAR BUTTON ===== */
-#btnModel {
+/* #btnModel {
   position: absolute;
   top: 255px;
   right: 10px;
@@ -441,9 +444,8 @@
 
 #btnModel:hover {
   background: #45a049;
-}
+} */
 
->>>>>>> Stashed changes
 /* ===== SCROLLBAR ===== */
 .panel-content::-webkit-scrollbar {
   width: 4px;

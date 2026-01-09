@@ -8,17 +8,17 @@
     <div id="btnContainer">
       <!-- Nút đo đạc -->
       <button id="btnMeasure" class="btnControl">
-        <img class="imgControl" :src="require('@/assets/img/measure.png')"/>
+        <img class="imgControl" :src="require('@/assets/img/measure.png')" />
       </button>
 
       <!-- Nút mực nước biển dâng -->
       <button id="btnSeaRise" class="btnControl">
-        <img class="imgControl" :src="require('@/assets/img/seaLevel.png')"/>
+        <img class="imgControl" :src="require('@/assets/img/seaLevel.png')" />
       </button>
 
       <!-- Nút quản lý Model -->
       <button id="btnModel" class="btnControl">
-        <img class="imgControl" :src="require('@/assets/img/model.png')"/>
+        <img class="imgControl" :src="require('@/assets/img/model.png')" />
       </button>
     </div>
 
@@ -26,7 +26,7 @@
     <div id="panelMeasure">
       <div class="divMeasure">
         <button id="btnHeight" @click="toggleHeightMeasure">
-          <img :src="require('@/assets/img/measure.png')"/>
+          <img :src="require('@/assets/img/measure.png')" />
           {{ measureActive ? "Tắt Đo chiều cao" : "Đo chiều cao" }}
         </button>
         <label class="labelMeasure">Đo chiều cao</label>
@@ -34,15 +34,15 @@
 
       <div class="divMeasure">
         <button id="btnLocate" @click="toggleLocatePoint">
-          <img :src="require('@/assets/img/measure.png')"/>
+          <img :src="require('@/assets/img/measure.png')" />
           {{ locateActive ? "Tắt Lấy tọa độ" : "Lấy tọa độ" }}
         </button>
         <label class="labelMeasure">Lấy tọa độ</label>
       </div>
-      
+
       <div class="divMeasure">
         <button id="btnStopMeasure" @click="clearAllMeasurements">
-          <img :src="require('@/assets/img/measure.png')"/>
+          <img :src="require('@/assets/img/measure.png')" />
         </button>
         <label class="labelMeasure">Xóa phép đo</label>
       </div>
@@ -54,7 +54,6 @@
     </button>
 
     <button id="btnBasemap">🗺️</button>
-    
 
     <!-- Bảng thuộc tính -->
     <div id="attributeTable" v-show="attrVisible">
@@ -72,10 +71,13 @@
     </button>
 
     <!-- Viewshed bằng VcAnalyses -->
-    <vc-analyses v-if="viewshedActive" ref="vcViewshed" analysis-type="viewshed" />
+    <vc-analyses
+      v-if="viewshedActive"
+      ref="vcViewshed"
+      analysis-type="viewshed"
+    />
   </div>
 </template>
-
 
 <script>
 import "./css/MapView.css";
@@ -85,5 +87,4 @@ import MapLogic from "./js/Map.js";
 export default MapLogic;
 </script>
 
-<style scoped>
-</style>
+<style scoped></style>
