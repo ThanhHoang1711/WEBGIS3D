@@ -48,7 +48,7 @@ venv/
 # =====================
 # MEDIA / GIS DATA (RẤT QUAN TRỌNG)
 # =====================
-# backend/media/
+backend/media/
 *.glb
 *.gltf
 *.b3dm

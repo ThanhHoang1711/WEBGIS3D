@@ -358,9 +358,16 @@ export class ModelManager {
    */
   toggleManagerPanel() {
     const panel = document.getElementById("modelManagerPanel");
-    panel.classList.toggle("active");
-  }
+    const isActive = panel.classList.contains("active");
 
+    if (isActive) {
+      // Đóng panel
+      panel.classList.remove("active");
+    } else {
+      // Mở panel
+      panel.classList.add("active");
+    }
+  }
   /**
    * ✅ Update bảng với phân trang
    */

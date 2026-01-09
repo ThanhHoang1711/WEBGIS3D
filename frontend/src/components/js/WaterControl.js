@@ -17,6 +17,8 @@ export function setupWaterControl(viewer) {
   let waterLevel = 0;
   const maxWater = 500;
   let waterEntity = null;
+  let zoneEntities = []; // ✅ Lưu tất cả water zones
+  let floatingModel = null; // ✅ Lưu floating model
 
   const waterBoundary = [105.2, 21.1, 105.5, 21.1, 105.5, 21.0, 105.2, 21.0];
 
@@ -215,188 +217,218 @@ export function setupWaterControl(viewer) {
   }
 
   // ✅ Tạo mặt nước với CallbackProperty và hiệu ứng chuyển động
-  // --- Thay thế createWaterSurface cũ bằng hàm mới này + các hàm phụ trợ ---
+  function createWaterSurface() {
+    if (waterEntity) return;
 
-function createWaterSurface() {
-  if (waterEntity) return;
+    // ====== CẤU HÌNH CHUNG ======
+    const centerLon = 105.29;
+    const centerLat = 21.03;
+    const zoneRadii = [500, 2000, 8000, 30000];
+    const zoneCount = zoneRadii.length;
+    const NUM_POINTS = 12000;
 
-  // ====== CẤU HÌNH CHUNG ======
-  const centerLon = 105.29;
-  const centerLat = 21.03;
-  const zoneRadii = [500, 2000, 8000, 30000]; // mét: [sát bờ, ven bờ, trung gian, ngoài khơi]
-  const zoneCount = zoneRadii.length;
-  const NUM_POINTS = 12000;
-
-  const degPerMeterLat = 1 / 110540;
-  const degPerMeterLon = 1 / (111320 * Math.cos(centerLat * Math.PI / 180));
-  const maxRadius = zoneRadii[zoneCount - 1];
-  const bbox = {
-    minLon: centerLon - maxRadius * degPerMeterLon,
-    maxLon: centerLon + maxRadius * degPerMeterLon,
-    minLat: centerLat - maxRadius * degPerMeterLat,
-    maxLat: centerLat + maxRadius * degPerMeterLat,
-  };
-
-  // ====== TẠO VÙNG SÓNG ======
-  const zoneEntities = [];
-  for (let i = 0; i < zoneCount; i++) {
-    const outer = zoneRadii[i];
-    const coords = circleDegrees(centerLon, centerLat, outer, 64);
-    const ent = viewer.entities.add({
-      name: `Water Zone ${i + 1}`,
-      polygon: {
-        hierarchy: Cartesian3.fromDegreesArray(coords),
-        material: new ImageMaterialProperty({
-          image: buildModuleUrl("Assets/Textures/waterNormals.jpg"),
-          repeat: new Cartesian2(20 + i * 10, 20 + i * 10),
-          color: new Color(0.0, 0.35 + i * 0.15, 0.7 - i * 0.05, 0.55 - i * 0.06),
-        }),
-        height: new CallbackProperty(() => 0, false),
-        extrudedHeight: 0,
-      },
-      show: true,
-    });
-    zoneEntities.push(ent);
-  }
-
-  // ====== SINH NGẪU NHIÊN CÁC ĐIỂM SÓNG ======
-  const points = [];
-  for (let i = 0; i < NUM_POINTS; i++) {
-    const lon = randomBetween(bbox.minLon, bbox.maxLon);
-    const lat = randomBetween(bbox.minLat, bbox.maxLat);
-    const d = geodesicDistance(centerLon, centerLat, lon, lat);
-    let zoneIndex = zoneRadii.findIndex(r => d <= r);
-    if (zoneIndex === -1) zoneIndex = zoneCount - 1;
-
-    const zoneParams = sampleParamsForZone(zoneIndex);
-    const point = {
-      lon,
-      lat,
-      zoneIndex,
-      distanceToCenter: d,
-      params: zoneParams,
-      phase: Math.random() * Math.PI * 2,
+    const degPerMeterLat = 1 / 110540;
+    const degPerMeterLon = 1 / (111320 * Math.cos((centerLat * Math.PI) / 180));
+    const maxRadius = zoneRadii[zoneCount - 1];
+    const bbox = {
+      minLon: centerLon - maxRadius * degPerMeterLon,
+      maxLon: centerLon + maxRadius * degPerMeterLon,
+      minLat: centerLat - maxRadius * degPerMeterLat,
+      maxLat: centerLat + maxRadius * degPerMeterLat,
     };
-    points.push(point);
-  }
 
-  // ====== HEIGHT CALLBACK MỖI VÙNG ======
-  const zoneOffsets = new Array(zoneCount).fill(0);
-  for (let i = 0; i < zoneCount; i++) {
-    zoneEntities[i].polygon.height = new CallbackProperty(() => {
-      return waterLevel + (zoneOffsets[i] || 0);
-    }, false);
-  }
+    // ====== TẠO VÙNG SÓNG ======
+    zoneEntities = []; // ✅ Reset mảng
+    for (let i = 0; i < zoneCount; i++) {
+      const outer = zoneRadii[i];
+      const coords = circleDegrees(centerLon, centerLat, outer, 64);
+      const ent = viewer.entities.add({
+        name: `Water Zone ${i + 1}`,
+        polygon: {
+          hierarchy: Cartesian3.fromDegreesArray(coords),
+          material: new ImageMaterialProperty({
+            image: buildModuleUrl("Assets/Textures/waterNormals.jpg"),
+            repeat: new Cartesian2(20 + i * 10, 20 + i * 10),
+            color: new Color(
+              0.0,
+              0.35 + i * 0.15,
+              0.7 - i * 0.05,
+              0.55 - i * 0.06
+            ),
+          }),
+          height: new CallbackProperty(() => 0, false),
+          extrudedHeight: 0,
+        },
+        show: false, // ✅ BẮT ĐẦU ẨN ĐI
+      });
+      zoneEntities.push(ent);
+    }
 
-  // ====== THÊM MÔ HÌNH NỔI ======
-  const model = addFloatingModel(viewer, {
-    url: "http://localhost:8000/media/models/su57.glb",
-    position: [centerLon, centerLat],
-    getWaterLevel: () => waterLevel,
-  });
+    // ====== SINH NGẪU NHIÊN CÁC ĐIỂM SÓNG ======
+    const points = [];
+    for (let i = 0; i < NUM_POINTS; i++) {
+      const lon = randomBetween(bbox.minLon, bbox.maxLon);
+      const lat = randomBetween(bbox.minLat, bbox.maxLat);
+      const d = geodesicDistance(centerLon, centerLat, lon, lat);
+      let zoneIndex = zoneRadii.findIndex((r) => d <= r);
+      if (zoneIndex === -1) zoneIndex = zoneCount - 1;
 
-  // ====== CẬP NHẬT SÓNG THEO THỜI GIAN ======
-  let time = 0;
-  const globalSpeedFactor = 2.5; // 💨 tăng tốc độ chu kỳ sóng (ban đầu 1.0)
+      const zoneParams = sampleParamsForZone(zoneIndex);
+      const point = {
+        lon,
+        lat,
+        zoneIndex,
+        distanceToCenter: d,
+        params: zoneParams,
+        phase: Math.random() * Math.PI * 2,
+      };
+      points.push(point);
+    }
 
-  viewer.clock.onTick.addEventListener(() => {
-    const dt = viewer.clock.deltaTime || 1 / 60;
-    time += dt * 0.5; // 💨 tăng tốc trôi thời gian (ban đầu 0.5)
+    // ====== HEIGHT CALLBACK MỖI VÙNG ======
+    const zoneOffsets = new Array(zoneCount).fill(0);
+    let currentWaveOffset = 0;
 
-    // reset offset
-    zoneOffsets.fill(0);
+    for (let i = 0; i < zoneCount; i++) {
+      zoneEntities[i].polygon.height = new CallbackProperty(() => {
+        return waterLevel + (zoneOffsets[i] || 0);
+      }, false);
+    }
 
-    // tính đóng góp của từng điểm sóng
-    for (let p of points) {
-      const par = p.params;
-      const distToCenter = p.distanceToCenter;
-      const k = (2 * Math.PI) / par.wavelength;
-      const omega = (2 * Math.PI) / par.period;
+    // ====== THÊM MÔ HÌNH NỔI ======
+    floatingModel = addFloatingModel(viewer, {
+      url: "http://localhost:8000/media/models/tauchien.glb",
+      position: [centerLon, centerLat],
+      getWaterLevel: () => waterLevel + currentWaveOffset,
+      scale: 100,
+    });
 
-      // tính dao động
-      const disp =
-        par.amplitude *
-        Math.sin(
-          k * distToCenter - omega * time * par.speed * globalSpeedFactor + p.phase
+    // ====== CẬP NHẬT SÓNG THEO THỜI GIAN ======
+    let time = 0;
+    const globalSpeedFactor = 2.5;
+
+    viewer.clock.onTick.addEventListener(() => {
+      const dt = viewer.clock.deltaTime || 1 / 60;
+      time += dt * 0.5;
+
+      // ✅ RESET OFFSET
+      zoneOffsets.fill(0);
+      currentWaveOffset = 0;
+
+      // tính đóng góp của từng điểm sóng
+      for (let p of points) {
+        const par = p.params;
+        const distToCenter = p.distanceToCenter;
+        const k = (2 * Math.PI) / par.wavelength;
+        const omega = (2 * Math.PI) / par.period;
+
+        const disp =
+          par.amplitude *
+          Math.sin(
+            k * distToCenter -
+              omega * time * par.speed * globalSpeedFactor +
+              p.phase
+          );
+
+        const decay = Math.exp(
+          -Math.pow(distToCenter / (par.influenceRadius || 10000), 2)
         );
+        const contribution = disp * decay;
+        zoneOffsets[p.zoneIndex] += contribution;
 
-      const decay = Math.exp(-Math.pow(distToCenter / (par.influenceRadius || 10000), 2));
-      const contribution = disp * decay;
-      zoneOffsets[p.zoneIndex] += contribution;
-    }
+        if (p.zoneIndex === 0) {
+          currentWaveOffset += contribution;
+        }
+      }
 
-    // hiệu ứng trôi texture
-    for (let i = 0; i < zoneEntities.length; i++) {
-      const ent = zoneEntities[i];
-      if (!ent.polygon || !ent.polygon.material) continue;
-      const mat = ent.polygon.material;
-      const drift = time * (0.8 + i * 0.3);
-      mat.repeat = new Cartesian2(
-        40 + i * 10 + Math.cos(time * (0.8 + i * 0.2)) * 3,
-        40 + i * 10
-      );
-      mat.translation = new Cartesian2(-drift, 0);
-    }
-  });
+      // hiệu ứng trôi texture
+      for (let i = 0; i < zoneEntities.length; i++) {
+        const ent = zoneEntities[i];
+        if (!ent.polygon || !ent.polygon.material) continue;
+        const mat = ent.polygon.material;
+        const drift = time * (0.8 + i * 0.3);
+        mat.repeat = new Cartesian2(
+          40 + i * 10 + Math.cos(time * (0.8 + i * 0.2)) * 3,
+          40 + i * 10
+        );
+        mat.translation = new Cartesian2(-drift, 0);
+      }
+    });
 
-  // dùng zone đầu tiên làm đại diện
-  waterEntity = zoneEntities[0];
-}
-
-//
-// ====== HÀM PHỤ TRỢ ======
-//
-
-// tạo vòng tròn (lon/lat)
-function circleDegrees(centerLon, centerLat, radiusMeters, numPoints = 64) {
-  const points = [];
-  const degPerMeterLat = 1 / 110540;
-  const degPerMeterLon = 1 / (111320 * Math.cos(centerLat * Math.PI / 180));
-  for (let i = 0; i < numPoints; i++) {
-    const theta = (i / numPoints) * Math.PI * 2;
-    const dx = Math.cos(theta) * radiusMeters;
-    const dy = Math.sin(theta) * radiusMeters;
-    const lon = centerLon + dx * degPerMeterLon;
-    const lat = centerLat + dy * degPerMeterLat;
-    points.push(lon, lat);
+    waterEntity = zoneEntities[0];
   }
-  return points;
-}
 
-// random between
-function randomBetween(a, b) {
-  return a + Math.random() * (b - a);
-}
+  // ====== HÀM PHỤ TRỢ ======
+  function circleDegrees(centerLon, centerLat, radiusMeters, numPoints = 64) {
+    const points = [];
+    const degPerMeterLat = 1 / 110540;
+    const degPerMeterLon = 1 / (111320 * Math.cos((centerLat * Math.PI) / 180));
+    for (let i = 0; i < numPoints; i++) {
+      const theta = (i / numPoints) * Math.PI * 2;
+      const dx = Math.cos(theta) * radiusMeters;
+      const dy = Math.sin(theta) * radiusMeters;
+      const lon = centerLon + dx * degPerMeterLon;
+      const lat = centerLat + dy * degPerMeterLat;
+      points.push(lon, lat);
+    }
+    return points;
+  }
 
-// tính khoảng cách địa lý (m)
-function geodesicDistance(lon1, lat1, lon2, lat2) {
-  const c1 = Cesium.Cartographic.fromDegrees(lon1, lat1);
-  const c2 = Cesium.Cartographic.fromDegrees(lon2, lat2);
-  const geod = new Cesium.EllipsoidGeodesic(c1, c2);
-  return geod.surfaceDistance;
-}
+  function randomBetween(a, b) {
+    return a + Math.random() * (b - a);
+  }
 
-// sinh tham số sóng điển hình cho từng vùng
-function sampleParamsForZone(zoneIndex) {
-  const base = [
-    { amplitude: 1.2, wavelength: 7, period: 2.5, speed: 1.0, influenceRadius: 800 }, // sát bờ
-    { amplitude: 0.8, wavelength: 15, period: 4.0, speed: 1.0, influenceRadius: 2000 }, // ven bờ
-    { amplitude: 0.6, wavelength: 35, period: 6.0, speed: 1.0, influenceRadius: 6000 }, // trung gian
-    { amplitude: 0.5, wavelength: 60, period: 8.0, speed: 1.0, influenceRadius: 20000 }, // ngoài khơi
-  ][zoneIndex];
+  function geodesicDistance(lon1, lat1, lon2, lat2) {
+    const c1 = Cesium.Cartographic.fromDegrees(lon1, lat1);
+    const c2 = Cesium.Cartographic.fromDegrees(lon2, lat2);
+    const geod = new Cesium.EllipsoidGeodesic(c1, c2);
+    return geod.surfaceDistance;
+  }
 
-  const jitter = (v, pct = 0.3) => v * (1 + (Math.random() - 0.5) * 2 * pct);
+  function sampleParamsForZone(zoneIndex) {
+    const base = [
+      {
+        amplitude: 1.2,
+        wavelength: 7,
+        period: 2.5,
+        speed: 1.0,
+        influenceRadius: 800,
+      },
+      {
+        amplitude: 0.8,
+        wavelength: 15,
+        period: 4.0,
+        speed: 1.0,
+        influenceRadius: 2000,
+      },
+      {
+        amplitude: 0.6,
+        wavelength: 35,
+        period: 6.0,
+        speed: 1.0,
+        influenceRadius: 6000,
+      },
+      {
+        amplitude: 0.5,
+        wavelength: 60,
+        period: 8.0,
+        speed: 1.0,
+        influenceRadius: 20000,
+      },
+    ][zoneIndex];
 
-  return {
-    amplitude: jitter(base.amplitude, 0.4),
-    wavelength: jitter(base.wavelength, 0.25),
-    period: jitter(base.period, 0.3),
-    speed: base.speed * (0.8 + Math.random() * 0.8),
-    influenceRadius: base.influenceRadius * (0.7 + Math.random() * 0.6),
-  };
-}
+    const jitter = (v, pct = 0.3) => v * (1 + (Math.random() - 0.5) * 2 * pct);
 
-  // ✅ Cập nhật UI
+    return {
+      amplitude: jitter(base.amplitude, 0.4),
+      wavelength: jitter(base.wavelength, 0.25),
+      period: jitter(base.period, 0.3),
+      speed: base.speed * (0.8 + Math.random() * 0.8),
+      influenceRadius: base.influenceRadius * (0.7 + Math.random() * 0.6),
+    };
+  }
+
+  // ✅ Cập nhật UI và hiển thị/ẩn mặt nước
   function updateUI() {
     const levelText = document.getElementById("waterLevelText");
     const progress = document.getElementById("waterProgress");
@@ -405,6 +437,14 @@ function sampleParamsForZone(zoneIndex) {
     if (progress) {
       const percentage = (waterLevel / maxWater) * 100;
       progress.style.width = `${percentage}%`;
+    }
+
+    // ✅ Hiển thị/ẩn các zone dựa trên waterLevel
+    if (zoneEntities.length > 0) {
+      const shouldShow = waterLevel > 0;
+      zoneEntities.forEach((zone) => {
+        zone.show = shouldShow;
+      });
     }
   }
 
@@ -457,22 +497,48 @@ function sampleParamsForZone(zoneIndex) {
     }
   }
 
+  // ✅ HÀM XÓA TẤT CẢ HIỆU ỨNG NƯỚC
+  function cleanupWaterEffects() {
+    // Xóa tất cả water zones
+    if (zoneEntities.length > 0) {
+      zoneEntities.forEach((zone) => {
+        viewer.entities.remove(zone);
+      });
+      zoneEntities = [];
+      console.log("🗑️ Đã xóa tất cả water zones");
+    }
+
+    // Xóa floating model
+    if (floatingModel) {
+      viewer.entities.remove(floatingModel);
+      floatingModel = null;
+      console.log("🗑️ Đã xóa floating model");
+    }
+
+    // Reset waterEntity
+    waterEntity = null;
+
+    // Reset waterLevel
+    waterLevel = 0;
+  }
+
   // ✅ Xử lý click nút chính
   btn.addEventListener("click", () => {
     let popup = document.getElementById("waterControlPopup");
 
     if (popup) {
-      // Đóng popup
+      // ✅ Đóng popup và XÓA TẤT CẢ
       popup.remove();
+
       if (autoInterval) {
         clearInterval(autoInterval);
         autoInterval = null;
       }
-      if (waterEntity) {
-        viewer.entities.remove(waterEntity);
-        waterEntity = null;
-      }
-      waterLevel = 0;
+
+      // ✅ Gọi hàm cleanup để xóa tất cả
+      cleanupWaterEffects();
+
+      console.log("✅ Đã đóng popup và xóa tất cả hiệu ứng nước");
       return;
     }
 
@@ -485,6 +551,10 @@ function sampleParamsForZone(zoneIndex) {
     document.getElementById("closePopup").addEventListener("click", () => {
       popup.remove();
       if (autoInterval) clearInterval(autoInterval);
+
+      // ✅ Xóa tất cả khi đóng popup bằng nút X
+      cleanupWaterEffects();
+      console.log("✅ Đã đóng popup (nút X) và xóa tất cả hiệu ứng nước");
     });
 
     document

@@ -1,16 +1,15 @@
 /* ===== SIDEBAR PANEL ===== */
-#modelManagerPanel{
+#modelManagerPanel {
   position: absolute;
   top: 0px;
   left: 0px;
   max-height: 80%;
   width: 400px;
-  display: none;
 }
 
 .manager-panel {
   position: fixed;
-  left: -350px;
+  left: -350px; /* ✅ Giữ nguyên */
   top: 150px;
   width: 350px;
   height: 600px;
@@ -18,12 +17,14 @@
   border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   z-index: 900;
-  display: flex;
+  display: flex; /* ✅ THAY ĐỔI: luôn flex, không none */
   flex-direction: column;
   transition: left 0.3s ease;
 }
 
-.manager-panel.active { left: 20px; }
+.manager-panel.active {
+  left: 20px; /* ✅ Slide vào khi active */
+}
 
 /* ===== PANEL HEADER ===== */
 .panel-header {
@@ -42,7 +43,8 @@
   margin: 0;
 }
 
-.btn-close-panel, .btn-back {
+.btn-close-panel,
+.btn-back {
   background: none;
   border: none;
   color: #aaa;
@@ -52,7 +54,10 @@
   padding: 4px;
 }
 
-.btn-close-panel:hover, .btn-back:hover { color: #fff; }
+.btn-close-panel:hover,
+.btn-back:hover {
+  color: #fff;
+}
 
 /* ===== PANEL TOOLBAR ===== */
 .panel-toolbar {
@@ -63,7 +68,8 @@
   gap: 8px;
 }
 
-.btn-add-new, .btn-convert-3d {
+.btn-add-new,
+.btn-convert-3d {
   flex: 1;
   padding: 8px;
   border: none;
@@ -79,14 +85,18 @@
   color: white;
 }
 
-.btn-add-new:hover { background: #45a049; }
+.btn-add-new:hover {
+  background: #45a049;
+}
 
 .btn-convert-3d {
   background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
   color: white;
 }
 
-.btn-convert-3d:hover { transform: translateY(-1px); }
+.btn-convert-3d:hover {
+  transform: translateY(-1px);
+}
 
 /* ===== PANEL CONTENT ===== */
 .panel-content {
@@ -123,10 +133,12 @@
   color: #ccc;
 }
 
-.model-row:hover { background: #333; }
+.model-row:hover {
+  background: #333;
+}
 
-.model-name { 
-  color: #4caf50; 
+.model-name {
+  color: #4caf50;
   font-weight: 600;
   max-width: 80px;
   white-space: nowrap;
@@ -134,8 +146,13 @@
   text-overflow: ellipsis;
 }
 
-.model-scale { color: #2196f3; }
-.model-rotation { color: #ff9800; font-family: monospace; }
+.model-scale {
+  color: #2196f3;
+}
+.model-rotation {
+  color: #ff9800;
+  font-family: monospace;
+}
 
 .model-tools {
   display: flex;
@@ -153,11 +170,19 @@
   color: white;
 }
 
-.btn-zoom { background: #ff9800; }
-.btn-edit { background: #2196f3; }
-.btn-delete { background: #f44336; }
+.btn-zoom {
+  background: #ff9800;
+}
+.btn-edit {
+  background: #2196f3;
+}
+.btn-delete {
+  background: #f44336;
+}
 
-.btn-tool:hover { transform: scale(1.1); }
+.btn-tool:hover {
+  transform: scale(1.1);
+}
 
 .empty-row td {
   text-align: center;
@@ -284,18 +309,21 @@
 }
 
 /* ===== COORDINATES & ROTATION GRID ===== */
-.coord-grid, .rotation-grid {
+.coord-grid,
+.rotation-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
 
-.coord-item, .rotation-item {
+.coord-item,
+.rotation-item {
   display: flex !important;
   flex-direction: column;
 }
 
-.coord-item label, .rotation-item label {
+.coord-item label,
+.rotation-item label {
   font-size: 10px;
   color: #aaa;
   margin-bottom: 2px;
@@ -337,7 +365,9 @@
   transition: background 0.3s;
 }
 
-.btn-select:hover { background: #1976d2; }
+.btn-select:hover {
+  background: #1976d2;
+}
 
 .button-group {
   display: flex;
@@ -358,7 +388,9 @@
   transition: background 0.3s;
 }
 
-.btn-submit:hover { background: #45a049; }
+.btn-submit:hover {
+  background: #45a049;
+}
 
 /* ===== STATUS ===== */
 .upload-status {
@@ -389,6 +421,29 @@
   margin-top: 2px;
 }
 
+<<<<<<< Updated upstream
+=======
+/* ===== TOOLBAR BUTTON ===== */
+#btnModel {
+  position: absolute;
+  top: 255px;
+  right: 10px;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  height: 26px;
+  width: 26px;
+}
+
+#btnModel:hover {
+  background: #45a049;
+}
+
+>>>>>>> Stashed changes
 /* ===== SCROLLBAR ===== */
 .panel-content::-webkit-scrollbar {
   width: 4px;
@@ -405,12 +460,14 @@
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 480px) {
-  .manager-panel, .upload-panel {
+  .manager-panel,
+  .upload-panel {
     width: 300px;
     height: 500px;
   }
-  
-  .coord-grid, .rotation-grid {
+
+  .coord-grid,
+  .rotation-grid {
     grid-template-columns: 1fr;
   }
 }

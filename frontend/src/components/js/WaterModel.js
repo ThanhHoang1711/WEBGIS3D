@@ -3,7 +3,6 @@ import {
   Cartesian3,
   Transforms,
   HeadingPitchRoll,
-  Matrix4,
   Math as CesiumMath,
 } from "cesium";
 
@@ -14,71 +13,41 @@ import {
  * @param {string} options.url - Đường dẫn tới file GLB
  * @param {number[]} options.position - Tọa độ [kinh độ, vĩ độ]
  * @param {Function} options.getWaterLevel - Hàm trả về mực nước hiện tại
+ * @param {number} [options.heading=0] - Hướng ban đầu (độ), 0=Bắc, 90=Đông, 180=Nam, 270=Tây
+ * @param {number} [options.scale=1.0] - Tỷ lệ model
+ * @param {number} [options.depthOffset=-30] - Độ sâu chìm xuống (m), giá trị âm = chìm xuống
  */
-function addFloatingModel(viewer, { url, position, getWaterLevel }) {
+function addFloatingModel(
+  viewer,
+  {
+    url,
+    position,
+    getWaterLevel,
+    heading = 0,
+    scale = 1.0,
+    depthOffset = -30, // ✅ Thêm tham số độ sâu, mặc định chìm 20m
+  }
+) {
   if (!viewer || !url || !position || !getWaterLevel) {
     console.error("⚠️ Thiếu tham số cần thiết khi tạo mô hình nổi!");
     return;
   }
 
-  // const [lon, lat] = position;
-
-  // // Khởi tạo mô hình 3D
-  // const modelEntity = viewer.entities.add({
-  //   name: "Floating Model",
-  //   position: Cartesian3.fromDegrees(lon, lat, getWaterLevel()),
-  //   model: {
-  //     uri: url,
-  //     scale: 1.0,
-  //     minimumPixelSize: 64,
-  //     maximumScale: 100,
-  //     runAnimations: true,
-  //   },
-  // });
-
-  // // Biến điều khiển hiệu ứng nổi
-  // let angle = 0;
-  // const waveSpeed = 0.02;
-  // const floatAmplitude = 0.5;
-
-  // viewer.clock.onTick.addEventListener(() => {
-  //   const waterLevel = getWaterLevel();
-  //   angle += waveSpeed;
-
-  //   const verticalOffset = Math.sin(angle) * floatAmplitude;
-  //   const height = waterLevel + verticalOffset;
-
-  //   const newPos = Cartesian3.fromDegrees(lon, lat, height);
-  //   modelEntity.position = newPos;
-
-  //   const heading = CesiumMath.toRadians((angle * 20) % 360);
-  //   const roll = CesiumMath.toRadians(Math.sin(angle) * 2);
-  //   const hpr = new HeadingPitchRoll(heading, 0, roll);
-  //   modelEntity.orientation = Transforms.headingPitchRollQuaternion(newPos, hpr);
-  // });
-
-  // console.log("✅ Mô hình nổi đã được thêm:", url);
-  // return modelEntity;
-
-
-
-
   const [lon, lat] = position;
-  const totalDistanceMeters = 200000; // 5 km
+  const totalDistanceMeters = 5000; // 5 km
   const speedMetersPerSecond = 100; // tốc độ di chuyển (m/s)
-  //const lonPerMeter = 1 / (111320 * Math.cos(CesiumMath.toRadians(lat))); // quy đổi mét -> độ kinh
 
   let distanceTraveled = 0;
 
   // Khởi tạo mô hình
   const modelEntity = viewer.entities.add({
     name: "Floating Model",
-    position: Cartesian3.fromDegrees(lon, lat, getWaterLevel()),
+    position: Cartesian3.fromDegrees(lon, lat, getWaterLevel() + depthOffset),
     model: {
       uri: url,
-      scale: 1.0,
-      minimumPixelSize: 64,
-      maximumScale: 100,
+      scale: scale,
+      minimumPixelSize: 0,
+      maximumScale: undefined,
       runAnimations: true,
     },
   });
@@ -88,6 +57,9 @@ function addFloatingModel(viewer, { url, position, getWaterLevel }) {
   const waveSpeed = 0.02;
   const floatAmplitude = 0.5;
 
+  // Chuyển đổi heading từ độ sang radian
+  const baseHeadingRad = CesiumMath.toRadians(heading);
+
   viewer.clock.onTick.addEventListener((clock) => {
     const deltaTime = viewer.clock.deltaTime || 1 / 60;
     const waterLevel = getWaterLevel();
@@ -95,36 +67,52 @@ function addFloatingModel(viewer, { url, position, getWaterLevel }) {
     // Cập nhật góc sóng
     angle += waveSpeed;
 
-    // Hiệu ứng nổi
+    // Hiệu ứng nổi (nhưng vẫn chìm so với mực nước)
     const verticalOffset = Math.sin(angle) * floatAmplitude;
-    const height = waterLevel + verticalOffset;
+    const height = waterLevel + depthOffset + verticalOffset; // ✅ Cộng thêm depthOffset
 
-    // Di chuyển về phía Đông (tăng kinh độ)
+    // Di chuyển về phía Nam (giảm vĩ độ)
     if (distanceTraveled < totalDistanceMeters) {
       distanceTraveled += speedMetersPerSecond * deltaTime;
     } else {
-      distanceTraveled = 0; // 👉 Nếu muốn dừng lại thì xóa dòng này
+      distanceTraveled = 0; // Reset để lặp lại
     }
 
     const newLon = lon;
-    const latPerMeter = 1 / 111320; 
+    const latPerMeter = 1 / 111320;
     const newLat = lat - distanceTraveled * latPerMeter;
 
     const newPos = Cartesian3.fromDegrees(newLon, newLat, height);
     modelEntity.position = newPos;
 
+    // ✅ Tính hướng di chuyển
+    const movementDirection = 180; // Đi về hướng Nam
+    const modelDefaultOffset = 90; // Model mặc định hướng Đông
+    const correctedHeading = CesiumMath.toRadians(
+      movementDirection - modelDefaultOffset
+    );
+
     // Nghiêng nhẹ khi di chuyển (mô phỏng sóng)
-    const heading = CesiumMath.toRadians(180); // Quay mặt về hướng Nam
-    const roll = CesiumMath.toRadians(Math.sin(angle) * 0);
-    const hpr = new HeadingPitchRoll(heading, 0, roll);
-    modelEntity.orientation = Transforms.headingPitchRollQuaternion(newPos, hpr);
+    const roll = CesiumMath.toRadians(Math.sin(angle) * 5);
+    const pitch = CesiumMath.toRadians(Math.cos(angle * 0.7) * 2);
+
+    const hpr = new HeadingPitchRoll(correctedHeading, pitch, roll);
+    modelEntity.orientation = Transforms.headingPitchRollQuaternion(
+      newPos,
+      hpr
+    );
   });
 
-  console.log("✅ Mô hình nổi đã được thêm và đang di chuyển về phía Đông:", url);
+  console.log(
+    `✅ Mô hình đã được thêm (chìm ${Math.abs(
+      depthOffset
+    )}m dưới mực nước) và đang di chuyển về phía Nam:`,
+    url
+  );
   return modelEntity;
 }
 
-// ✅ Xuất theo kiểu default object để tránh lỗi webpack/vite bundling
+// ✅ Xuất theo kiểu default object
 export default {
   addFloatingModel,
 };
