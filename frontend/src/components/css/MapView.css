@@ -77,11 +77,6 @@ button {
 }
 
 /************************************************************* Nút đo model */
-#imgMeasure {
-  height: 25px;
-  width: 25px;
-}
-
 #btnMeasure {
   height: 25px;
   width: 25px;
@@ -91,11 +86,6 @@ button {
 }
 
 /************************************************************* Nút quản lý Model */
-#imgModel {
-  height: 25px;
-  width: 25px;
-}
-
 #btnModel {
   height: 25px;
   width: 25px;
@@ -262,11 +252,20 @@ button {
 }
 
 /* Ảnh trong button */
-#btnStopMeasure img,
-#btnHeight img,
-#btnLocate img {
-  width: 30px; /* Kích thước ảnh */
-  height: 30px;
+.imgMeasure {
+  width: 80px; /* Kích thước ảnh */
+  height: 50px;
+  object-fit: contain;
+  display: block;
+  position: absolute; /* Đặt ảnh ở giữa */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+#imgDelete {
+  width: 80px; /* Kích thước ảnh */
+  height: 40px;
   object-fit: contain;
   display: block;
   position: absolute; /* Đặt ảnh ở giữa */
