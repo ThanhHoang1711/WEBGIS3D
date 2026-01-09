@@ -389,24 +389,6 @@
   margin-top: 2px;
 }
 
-/* ===== TOOLBAR BUTTON ===== */
-#btnModel {
-  position: absolute;
-  top: 255px;
-  right: 10px;
-  background: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.3s;
-  height: 26px;
-  width: 26px;
-}
-
-#btnModel:hover { background: #45a049; }
-
 /* ===== SCROLLBAR ===== */
 .panel-content::-webkit-scrollbar {
   width: 4px;

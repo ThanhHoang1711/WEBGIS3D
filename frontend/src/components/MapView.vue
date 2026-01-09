@@ -6,8 +6,19 @@
 
     <!-- Các nút thao tác -->
     <div id="btnContainer">
-      <button id="btnMeasure">
-        <img id="imgMeasure" :src="require('@/assets/img/measure.png')"/>
+      <!-- Nút đo đạc -->
+      <button id="btnMeasure" class="btnControl">
+        <img class="imgControl" :src="require('@/assets/img/measure.png')"/>
+      </button>
+
+      <!-- Nút mực nước biển dâng -->
+      <button id="btnSeaRise" class="btnControl">
+        <img class="imgControl" :src="require('@/assets/img/seaLevel.png')"/>
+      </button>
+
+      <!-- Nút quản lý Model -->
+      <button id="btnModel" class="btnControl">
+        <img class="imgControl" :src="require('@/assets/img/model.png')"/>
       </button>
     </div>
 
@@ -43,8 +54,7 @@
     </button>
 
     <button id="btnBasemap">🗺️</button>
-    <button id="btnSeaRise">🌊</button>
-    <button id="btnModel">📦</button>
+    
 
     <!-- Bảng thuộc tính -->
     <div id="attributeTable" v-show="attrVisible">
