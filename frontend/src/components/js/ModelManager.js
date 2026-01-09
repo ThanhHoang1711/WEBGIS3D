@@ -6,22 +6,19 @@ import {
   Cartesian3,
   Transforms,
   Model,
-  ModelInstanceCollection,
-  Matrix4,
 } from "cesium";
 
 export class ModelManager {
   constructor(viewer) {
     this.viewer = viewer;
     this.models = [];
-    this.allModels = [];
+    this.allModels = []; // ✅ Lưu tất cả models
     this.selectedModel = null;
     this.isSelectingLocation = false;
     this.handler = null;
-    this.currentPage = 1;
-    this.itemsPerPage = 10;
-    this.primitives = new Map();
-    this.instanceCollections = []; // ✅ Lưu các instance collections
+    this.currentPage = 1; // ✅ Phân trang
+    this.itemsPerPage = 10; // ✅ 10 items/trang
+    this.primitives = new Map(); // ✅ Map model ID -> primitive
     this.init();
   }
 
@@ -36,6 +33,9 @@ export class ModelManager {
     this.loadModelsFromServer();
   }
 
+  /**
+   * ✅ Fetch CSRF token
+   */
   async fetchCsrfToken() {
     try {
       const response = await fetch("http://localhost:8000/api/csrf-token/");
@@ -48,12 +48,15 @@ export class ModelManager {
     }
   }
 
+  /**
+   * ✅ Load models từ server
+   */
   async loadModelsFromServer() {
     try {
       const response = await fetch("http://localhost:8000/api/models/");
       this.allModels = await response.json();
       console.log(`✅ Loaded ${this.allModels.length} models`);
-      this.currentPage = 1;
+      this.currentPage = 1; // ✅ Reset trang
       this.updatePaginationTable();
       this.loadAllModelsOnMap();
     } catch (error) {
@@ -61,6 +64,9 @@ export class ModelManager {
     }
   }
 
+  /**
+   * ✅ Load tất cả models lên bản đồ
+   */
   async loadAllModelsOnMap() {
     try {
       for (const modelData of this.allModels) {
@@ -88,6 +94,9 @@ export class ModelManager {
     }
   }
 
+  /**
+   * Tạo giao diện quản lý - Sidebar
+   */
   createManagerPanel() {
     const panelHtml = `
       <!-- ✅ SIDEBAR PANEL -->
@@ -100,7 +109,7 @@ export class ModelManager {
         <!-- Toolbar -->
         <div class="panel-toolbar">
           <button id="btnAddNewModel" class="btn-add-new">➕ Thêm</button>
-          <button id="btnAddInstances" class="btn-add-instances">🔥 Thêm Nhiều</button>
+          <button id="btnConvert3DTiles" class="btn-convert-3d">🔄 Convert 3DTiles</button>
         </div>
 
         <!-- Bảng models (phân trang) -->
@@ -130,7 +139,7 @@ export class ModelManager {
         <div id="managerStatus" class="manager-status"></div>
       </div>
 
-      <!-- ✅ UPLOAD PANEL -->
+      <!-- ✅ UPLOAD POPUP (Không overlay) -->
       <div id="uploadPanel" class="upload-panel" style="display: none;">
         <div class="panel-header">
           <button class="btn-back" id="btnBackToManager" title="Quay lại">←</button>
@@ -195,94 +204,57 @@ export class ModelManager {
           <div id="uploadStatus" class="upload-status"></div>
         </div>
       </div>
-
-      <!-- ✅ INSTANCING PANEL -->
-      <div id="instancingPanel" class="upload-panel" style="display: none;">
-        <div class="panel-header">
-          <button class="btn-back" id="btnBackFromInstancing" title="Quay lại">←</button>
-          <h2>🔥 Thêm Nhiều Model (Instancing)</h2>
-          <button class="btn-close-panel" id="btnCloseInstancing">&times;</button>
-        </div>
-
-        <div class="panel-content">
-          <div class="form-group">
-            <label>Chọn Model Mẫu:</label>
-            <select id="instanceModelSelect" class="form-select">
-              <option value="">-- Chọn model --</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Vùng Phủ (BBox):</label>
-            <div class="coord-grid">
-              <div class="coord-item">
-                <label>Min Lon:</label>
-                <input type="number" id="bboxMinLon" step="0.0001" placeholder="105.0">
-              </div>
-              <div class="coord-item">
-                <label>Max Lon:</label>
-                <input type="number" id="bboxMaxLon" step="0.0001" placeholder="105.1">
-              </div>
-              <div class="coord-item">
-                <label>Min Lat:</label>
-                <input type="number" id="bboxMinLat" step="0.0001" placeholder="21.0">
-              </div>
-              <div class="coord-item">
-                <label>Max Lat:</label>
-                <input type="number" id="bboxMaxLat" step="0.0001" placeholder="21.1">
-              </div>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Số Lượng Instances:</label>
-            <input type="number" id="instanceCount" value="100" min="1" max="10000" step="1">
-            <small style="color: #888;">Tối đa 10,000 instances</small>
-          </div>
-
-          <div class="form-group">
-            <label>Độ Cao (m):</label>
-            <input type="number" id="instanceHeight" value="0" step="0.1">
-          </div>
-
-          <div class="form-group">
-            <label>Scale:</label>
-            <input type="number" id="instanceScale" value="1" min="0.1" max="10" step="0.1">
-          </div>
-
-          <div class="button-group">
-            <button id="btnCreateInstances" class="btn-submit">✓ Tạo Instances</button>
-            <button id="btnClearInstances" class="btn-delete-inst">🗑️ Xóa Tất Cả</button>
-          </div>
-
-          <div id="instancingStatus" class="upload-status"></div>
-        </div>
-      </div>
     `;
 
     document.body.insertAdjacentHTML("beforeend", panelHtml);
     this.setupPanelEvents();
     this.setupUploadEvents();
-    this.setupInstancingEvents();
   }
 
+  /**
+   * Setup events cho manager panel
+   */
   setupPanelEvents() {
     const panel = document.getElementById("modelManagerPanel");
+    const uploadPanel = document.getElementById("uploadPanel");
+    const tbody = document.getElementById("modelsTableBody");
 
+    // Đóng panel
     document.getElementById("btnClosePanel").addEventListener("click", () => {
       panel.classList.remove("active");
     });
 
+    // Nút thêm mới
     document.getElementById("btnAddNewModel").addEventListener("click", () => {
       this.resetUploadForm();
       this.showUploadPanel();
     });
 
-    // ✅ Nút Thêm Nhiều (Instancing)
-    document.getElementById("btnAddInstances").addEventListener("click", () => {
-      this.showInstancingPanel();
-    });
+    // ✅ Nút Convert 3DTiles
+    document
+      .getElementById("btnConvert3DTiles")
+      .addEventListener("click", () => {
+        // Lấy các model được chọn
+        const checkboxes = document.querySelectorAll(".model-checkbox:checked");
+        const selectedIds = Array.from(checkboxes).map((cb) =>
+          parseInt(cb.dataset.modelId)
+        );
 
+        if (selectedIds.length === 0) {
+          alert("❌ Vui lòng chọn ít nhất 1 model để convert!");
+          return;
+        }
+
+        if (window.glbConvert3Dtiles) {
+          // Gửi danh sách model được chọn
+          window.glbConvert3Dtiles.setSelectedModels(selectedIds);
+          window.glbConvert3Dtiles.showConvertPanel();
+        } else {
+          alert("❌ GlbConvert3Dtiles chưa được khởi tạo!");
+        }
+      });
+
+    // ✅ Check all / Uncheck all - dùng event delegation
     document.addEventListener("change", (e) => {
       if (e.target.id === "checkAllModels") {
         const checkboxes = document.querySelectorAll(".model-checkbox");
@@ -290,8 +262,10 @@ export class ModelManager {
       }
     });
 
+    // ✅ Individual checkbox change - dùng event delegation
     document.addEventListener("change", (e) => {
       if (e.target.classList.contains("model-checkbox")) {
+        // Cập nhật check all button
         const checkAllBtn = document.getElementById("checkAllModels");
         const totalCheckboxes =
           document.querySelectorAll(".model-checkbox").length;
@@ -308,17 +282,53 @@ export class ModelManager {
       }
     });
 
+    // Quay lại từ upload
     document
       .getElementById("btnBackToManager")
       .addEventListener("click", () => {
         this.hideUploadPanel();
       });
 
+    // Đóng upload panel
     document.getElementById("btnCloseUpload").addEventListener("click", () => {
       this.hideUploadPanel();
     });
   }
 
+  /**
+   * ✅ Hiển thị upload panel
+   */
+  showUploadPanel() {
+    const managerPanel = document.getElementById("modelManagerPanel");
+    const uploadPanel = document.getElementById("uploadPanel");
+
+    // Ensure panel is visible
+    uploadPanel.style.display = "flex";
+
+    // Trigger animation
+    setTimeout(() => {
+      managerPanel.classList.add("slide-out");
+      uploadPanel.classList.add("slide-in");
+    }, 10);
+  }
+
+  /**
+   * ✅ Ẩn upload panel
+   */
+  hideUploadPanel() {
+    const managerPanel = document.getElementById("modelManagerPanel");
+    const uploadPanel = document.getElementById("uploadPanel");
+    managerPanel.classList.remove("slide-out");
+    uploadPanel.classList.remove("slide-in");
+
+    setTimeout(() => {
+      uploadPanel.style.display = "none";
+    }, 300);
+  }
+
+  /**
+   * Setup events cho upload popup
+   */
   setupUploadEvents() {
     const uploadPanel = document.getElementById("uploadPanel");
     const fileInput = document.getElementById("glbFile");
@@ -343,218 +353,24 @@ export class ModelManager {
     });
   }
 
-  // ✅ Setup Instancing Events
-  setupInstancingEvents() {
-    document
-      .getElementById("btnBackFromInstancing")
-      .addEventListener("click", () => {
-        this.hideInstancingPanel();
-      });
-
-    document
-      .getElementById("btnCloseInstancing")
-      .addEventListener("click", () => {
-        this.hideInstancingPanel();
-      });
-
-    document
-      .getElementById("btnCreateInstances")
-      .addEventListener("click", () => {
-        this.createInstances();
-      });
-
-    document
-      .getElementById("btnClearInstances")
-      .addEventListener("click", () => {
-        this.clearAllInstances();
-      });
-  }
-
-  // ✅ Hiển thị Instancing Panel
-  showInstancingPanel() {
-    const managerPanel = document.getElementById("modelManagerPanel");
-    const instancingPanel = document.getElementById("instancingPanel");
-
-    // Populate model select
-    this.populateModelSelect();
-
-    instancingPanel.style.display = "flex";
-
-    setTimeout(() => {
-      managerPanel.classList.add("slide-out");
-      instancingPanel.classList.add("slide-in");
-    }, 10);
-  }
-
-  // ✅ Ẩn Instancing Panel
-  hideInstancingPanel() {
-    const managerPanel = document.getElementById("modelManagerPanel");
-    const instancingPanel = document.getElementById("instancingPanel");
-    managerPanel.classList.remove("slide-out");
-    instancingPanel.classList.remove("slide-in");
-
-    setTimeout(() => {
-      instancingPanel.style.display = "none";
-    }, 300);
-  }
-
-  // ✅ Populate Model Select Dropdown
-  populateModelSelect() {
-    const select = document.getElementById("instanceModelSelect");
-    select.innerHTML = '<option value="">-- Chọn model --</option>';
-
-    this.allModels.forEach((model) => {
-      const option = document.createElement("option");
-      option.value = model.id;
-      option.textContent = `${model.name} (ID: ${model.id})`;
-      option.dataset.url = model.url;
-      select.appendChild(option);
-    });
-  }
-
-  // ✅ Tạo Instances
-  async createInstances() {
-    const modelId = document.getElementById("instanceModelSelect").value;
-    const minLon = parseFloat(document.getElementById("bboxMinLon").value);
-    const maxLon = parseFloat(document.getElementById("bboxMaxLon").value);
-    const minLat = parseFloat(document.getElementById("bboxMinLat").value);
-    const maxLat = parseFloat(document.getElementById("bboxMaxLat").value);
-    const count = parseInt(document.getElementById("instanceCount").value);
-    const height = parseFloat(document.getElementById("instanceHeight").value);
-    const scale = parseFloat(document.getElementById("instanceScale").value);
-
-    const statusDiv = document.getElementById("instancingStatus");
-
-    if (
-      !modelId ||
-      isNaN(minLon) ||
-      isNaN(maxLon) ||
-      isNaN(minLat) ||
-      isNaN(maxLat)
-    ) {
-      statusDiv.innerHTML =
-        '<p class="error">❌ Vui lòng điền đầy đủ thông tin!</p>';
-      return;
-    }
-
-    if (count < 1 || count > 10000) {
-      statusDiv.innerHTML =
-        '<p class="error">❌ Số lượng phải từ 1 đến 10,000!</p>';
-      return;
-    }
-
-    statusDiv.innerHTML = '<p class="loading">⏳ Đang tạo instances...</p>';
-
-    try {
-      const selectedOption = document.querySelector(
-        `#instanceModelSelect option[value="${modelId}"]`
-      );
-      const modelUrl = selectedOption.dataset.url;
-
-      console.log(`🔥 Creating ${count} instances of model: ${modelUrl}`);
-
-      // ✅ Tạo danh sách vị trí ngẫu nhiên
-      const instances = [];
-      for (let i = 0; i < count; i++) {
-        const lon = minLon + Math.random() * (maxLon - minLon);
-        const lat = minLat + Math.random() * (maxLat - minLat);
-        const randomHeight = height + (Math.random() - 0.5) * 10; // Biến thiên ±5m
-
-        const position = Cartesian3.fromDegrees(lon, lat, randomHeight);
-        const modelMatrix = Transforms.eastNorthUpToFixedFrame(position);
-
-        // ✅ Apply scale
-        const scaleMatrix = Matrix4.fromScale(
-          new Cartesian3(scale, scale, scale)
-        );
-        Matrix4.multiply(modelMatrix, scaleMatrix, modelMatrix);
-
-        instances.push({ modelMatrix });
-      }
-
-      // ✅ Tạo ModelInstanceCollection
-      const collection = new ModelInstanceCollection({
-        url: modelUrl,
-        instances: instances,
-      });
-
-      this.viewer.scene.primitives.add(collection);
-      this.instanceCollections.push(collection);
-
-      statusDiv.innerHTML = `<p class="success">✅ Đã tạo ${count} instances thành công!</p>`;
-
-      console.log(`✅ Created ${count} instances successfully!`);
-
-      setTimeout(() => {
-        this.hideInstancingPanel();
-      }, 2000);
-    } catch (error) {
-      console.error("❌ Error creating instances:", error);
-      statusDiv.innerHTML = `<p class="error">❌ Lỗi: ${error.message}</p>`;
-    }
-  }
-
-  // ✅ Xóa tất cả instances
-  clearAllInstances() {
-    if (this.instanceCollections.length === 0) {
-      alert("ℹ️ Không có instances nào để xóa!");
-      return;
-    }
-
-    if (
-      !confirm(
-        `❌ Xóa tất cả ${this.instanceCollections.length} instance collections?`
-      )
-    ) {
-      return;
-    }
-
-    this.instanceCollections.forEach((collection) => {
-      this.viewer.scene.primitives.remove(collection);
-    });
-
-    this.instanceCollections = [];
-
-    const statusDiv = document.getElementById("instancingStatus");
-    statusDiv.innerHTML = '<p class="success">✅ Đã xóa tất cả instances!</p>';
-
-    console.log("🗑️ Cleared all instances");
-  }
-
-  showUploadPanel() {
-    const managerPanel = document.getElementById("modelManagerPanel");
-    const uploadPanel = document.getElementById("uploadPanel");
-
-    uploadPanel.style.display = "flex";
-
-    setTimeout(() => {
-      managerPanel.classList.add("slide-out");
-      uploadPanel.classList.add("slide-in");
-    }, 10);
-  }
-
-  hideUploadPanel() {
-    const managerPanel = document.getElementById("modelManagerPanel");
-    const uploadPanel = document.getElementById("uploadPanel");
-    managerPanel.classList.remove("slide-out");
-    uploadPanel.classList.remove("slide-in");
-
-    setTimeout(() => {
-      uploadPanel.style.display = "none";
-    }, 300);
-  }
-
+  /**
+   * ✅ Toggle manager panel
+   */
   toggleManagerPanel() {
     const panel = document.getElementById("modelManagerPanel");
     const isActive = panel.classList.contains("active");
 
     if (isActive) {
+      // Đóng panel
       panel.classList.remove("active");
     } else {
+      // Mở panel
       panel.classList.add("active");
     }
   }
-
+  /**
+   * ✅ Update bảng với phân trang
+   */
   updatePaginationTable() {
     const tbody = document.getElementById("modelsTableBody");
     const start = (this.currentPage - 1) * this.itemsPerPage;
@@ -564,7 +380,7 @@ export class ModelManager {
     if (this.models.length === 0) {
       tbody.innerHTML = `
         <tr class="empty-row">
-          <td colspan="5">Chưa có model</td>
+          <td colspan="4">Chưa có model</td>
         </tr>
       `;
     } else {
@@ -602,6 +418,9 @@ export class ModelManager {
     this.updatePaginationControls();
   }
 
+  /**
+   * ✅ Update controls phân trang
+   */
   updatePaginationControls() {
     const totalPages = Math.ceil(this.allModels.length / this.itemsPerPage);
     const controlsDiv = document.getElementById("paginationControls");
@@ -630,6 +449,9 @@ export class ModelManager {
     controlsDiv.innerHTML = html;
   }
 
+  /**
+   * ✅ Go to page
+   */
   goToPage(page) {
     const totalPages = Math.ceil(this.allModels.length / this.itemsPerPage);
     if (page >= 1 && page <= totalPages) {
@@ -638,6 +460,9 @@ export class ModelManager {
     }
   }
 
+  /**
+   * Chọn vị trí trên bản đồ
+   */
   startLocationSelection() {
     this.isSelectingLocation = true;
     const btn = document.getElementById("btnSelectLocation");
@@ -670,6 +495,9 @@ export class ModelManager {
     this.handler.setInputAction(onLeftClick, ScreenSpaceEventType.LEFT_CLICK);
   }
 
+  /**
+   * Submit upload
+   */
   async submitUpload() {
     const file = document.getElementById("glbFile").files[0];
     const name = document.getElementById("modelName").value.trim();
@@ -725,6 +553,9 @@ export class ModelManager {
     }
   }
 
+  /**
+   * ✅ Zoom tới model
+   */
   zoomToModel(modelId) {
     const model = this.allModels.find((m) => m.id === modelId);
     if (!model) return;
@@ -743,10 +574,14 @@ export class ModelManager {
     console.log(`🔍 Zoomed to: ${model.name}`);
   }
 
+  /**
+   * ✅ Delete model (xoá trên map luôn)
+   */
   async deleteModel(modelId) {
     if (!confirm("❌ Xác nhận xoá?")) return;
 
     try {
+      // ✅ Xoá trên bản đồ ngay
       const primitive = this.primitives.get(modelId);
       if (primitive) {
         this.viewer.scene.primitives.remove(primitive);
@@ -754,6 +589,7 @@ export class ModelManager {
         console.log(`✅ Model removed from map`);
       }
 
+      // Xoá trên server
       const response = await fetch(
         `http://localhost:8000/api/models/${modelId}/delete/`,
         {
@@ -765,6 +601,7 @@ export class ModelManager {
       if (response.ok) {
         console.log("✅ Deleted from server!");
         this.showManagerStatus("✅ Xoá thành công!");
+        // ✅ Cập nhật bảng mà không reload
         this.allModels = this.allModels.filter((m) => m.id !== modelId);
         if (this.models.length === 0 && this.currentPage > 1) {
           this.currentPage--;
@@ -776,6 +613,9 @@ export class ModelManager {
     }
   }
 
+  /**
+   * Reset form upload
+   */
   resetUploadForm() {
     document.getElementById("coordLon").value = "";
     document.getElementById("coordLat").value = "";
@@ -790,6 +630,9 @@ export class ModelManager {
     document.getElementById("uploadStatus").innerHTML = "";
   }
 
+  /**
+   * Load model realtime
+   */
   async loadModelRealtime(modelData, lon, lat, height, scale) {
     try {
       const position = Cartesian3.fromDegrees(lon, lat, height);

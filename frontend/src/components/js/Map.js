@@ -70,38 +70,6 @@ export default {
       }
     },
 
-    async loadLocalGLB() {
-      if (import.meta.env.VITE_ENABLE_LOCAL_MODEL !== "true") {
-        console.log("🔕 Local GLB disabled");
-        return;
-      }
-
-      try {
-        const { Model } = await import("cesium");
-
-        const lon = Number(import.meta.env.VITE_LOCAL_GLB_LON);
-        const lat = Number(import.meta.env.VITE_LOCAL_GLB_LAT);
-        const height = Number(import.meta.env.VITE_LOCAL_GLB_HEIGHT);
-        const scale = Number(import.meta.env.VITE_LOCAL_GLB_SCALE);
-
-        const position = Cartesian3.fromDegrees(lon, lat, height);
-        const modelMatrix = Transforms.eastNorthUpToFixedFrame(position);
-
-        const model = await Model.fromGltfAsync({
-          url: import.meta.env.VITE_LOCAL_GLB_URL,
-          modelMatrix,
-          scale,
-        });
-
-        this.viewer.scene.primitives.add(model);
-        await this.viewer.zoomTo(model);
-
-        console.log("✅ Local GLB loaded (only this machine)");
-      } catch (err) {
-        console.warn("⚠️ Local GLB not loaded:", err);
-      }
-    },
-
     /* =========================
        Load GLB Models từ backend
        ========================= */
@@ -161,15 +129,8 @@ export default {
 
       await this.loadTileset();
 
-      // ✅ Khởi tạo ModelManager
-      this.modelManager = new ModelManager(this.viewer);
-      console.log("✅ Model Manager initialized");
-
-      // Load model chung (backend)
+      // 🔹 Load GLB models (nếu có)
       await this.loadGLBModels();
-
-      // Load model local (chỉ máy này)
-      await this.loadLocalGLB();
 
       // Gọi hàm sự kiện nút hiện panel
       this.setupMeasureButton();
@@ -177,7 +138,11 @@ export default {
       // 🔹 ✅ Kích hoạt mô phỏng nước - truyền terrain provider
       setupWaterControl(this.viewer);
 
-      //  Gán window.modelManager để access từ HTML
+      // ✅ Khởi tạo ModelManager
+      this.modelManager = new ModelManager(this.viewer);
+      console.log("✅ Model Manager initialized");
+
+      // ✅ Gán window.modelManager để access từ HTML
       window.modelManager = this.modelManager;
 
       // 🔹 Gán nút toggle bản đồ nền
