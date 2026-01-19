@@ -28,7 +28,7 @@ class GlbModel(models.Model):
 class GlbMesh(models.Model):
     glb_model = models.ForeignKey(GlbModel, on_delete=models.CASCADE, related_name='meshes')
     mesh_name = models.CharField(max_length=255)
-    vertex_data = models.TextField()  # Hoặc JSONField nếu bạn muốn dùng JSON
+    vertex_data = models.TextField()  
 
 class Tileset(models.Model):
     name = models.CharField(max_length=255, unique=True)  # Tên tileset

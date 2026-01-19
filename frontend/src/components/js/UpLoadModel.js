@@ -30,16 +30,95 @@ export class UploadModelHandler {
   }
 
   /**
+   * ✅ Hiển thị thông báo notification với vị trí lũy tiến
+   */
+  showNotification(message, type = "info") {
+    console.log(`${type.toUpperCase()}: ${message}`);
+
+    // Lấy tất cả notification hiện tại
+    const existingNotifications = document.querySelectorAll(".notification");
+    let topPosition = 10; // Vị trí bắt đầu
+
+    // Tính toán vị trí mới dựa trên số lượng notification hiện có
+    existingNotifications.forEach((notification) => {
+      const notificationHeight = notification.offsetHeight + 10; // Chiều cao + margin
+      topPosition += notificationHeight;
+    });
+
+    const notification = document.createElement("div");
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+    position: fixed;
+    top: ${topPosition}px;
+    right: 180px;
+    background: ${
+      type === "success" ? "#4CAF50" : type === "error" ? "#f44336" : "#2196F3"
+    };
+    color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    z-index: 10000;
+    max-width: 300px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    animation: slideIn 0.3s ease;
+  `;
+
+    // Thêm animation nếu chưa có
+    if (!document.querySelector("#notification-styles")) {
+      const style = document.createElement("style");
+      style.id = "notification-styles";
+      style.textContent = `
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      @keyframes slideOut {
+        from {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+      }
+    `;
+      document.head.appendChild(style);
+    }
+
+    document.body.appendChild(notification);
+
+    // Tự động xóa sau 3 giây
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.style.animation = "slideOut 0.3s ease";
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 300);
+      }
+    }, 3000);
+  }
+  /**
    * ✅ Fetch CSRF token từ backend
    */
   async fetchCsrfToken() {
     try {
       const response = await fetch("http://localhost:8000/api/csrf-token/");
       const data = await response.json();
-      console.log("🔐 CSRF Token fetched from backend");
+      this.showNotification("CSRF Token đã được lấy thành công", "success");
       return data.csrfToken;
     } catch (error) {
       console.error("❌ Failed to fetch CSRF token:", error);
+      this.showNotification("Không thể lấy CSRF Token", "error");
       return null;
     }
   }
@@ -53,7 +132,7 @@ export class UploadModelHandler {
     this.viewer.scene.screenSpaceCameraController.enableTilt = false;
     this.viewer.scene.screenSpaceCameraController.enableLook = false;
     this.viewer.scene.screenSpaceCameraController.enableTranslate = false;
-    console.log("🔒 Map interaction disabled");
+    this.showNotification("Bản đồ đã bị khóa trong khi upload", "info");
   }
 
   /**
@@ -65,7 +144,7 @@ export class UploadModelHandler {
     this.viewer.scene.screenSpaceCameraController.enableTilt = true;
     this.viewer.scene.screenSpaceCameraController.enableLook = true;
     this.viewer.scene.screenSpaceCameraController.enableTranslate = true;
-    console.log("🔓 Map interaction enabled");
+    this.showNotification("Bản đồ đã được mở khóa", "success");
   }
 
   /**
@@ -76,28 +155,37 @@ export class UploadModelHandler {
     const btnUpModel = document.getElementById("btnUpModel");
 
     btnUpModel.classList.add("active");
-    btnUpModel.textContent = "📍 Chọn vị trí trên bản đồ...";
+
+    // Không thay đổi textContent, thay vào đó hiển thị notification
+    this.showNotification("📍 Vui lòng chọn vị trí trên bản đồ", "info");
+    this.showNotification("Nhấn ESC để hủy", "info");
 
     this.handler = new ScreenSpaceEventHandler(this.viewer.canvas);
 
     const onLeftClick = (click) => {
       const cartesian = this.viewer.scene.pickPosition(click.position);
 
-      if (!cartesian) return;
+      if (!cartesian) {
+        this.showNotification(
+          "Không thể xác định vị trí, vui lòng thử lại",
+          "error"
+        );
+        return;
+      }
 
       const cartographic = Cartographic.fromCartesian(cartesian);
       const lon = CesiumMath.toDegrees(cartographic.longitude);
       const lat = CesiumMath.toDegrees(cartographic.latitude);
       const height = cartographic.height;
 
-      console.log(
-        `📍 Vị trí chọn: Lon=${lon.toFixed(6)}, Lat=${lat.toFixed(
+      this.showNotification(
+        `📍 Đã chọn vị trí: Lon=${lon.toFixed(6)}, Lat=${lat.toFixed(
           6
-        )}, Height=${height.toFixed(2)}`
+        )}, Height=${height.toFixed(2)}m`,
+        "success"
       );
 
       btnUpModel.classList.remove("active");
-      btnUpModel.textContent = "📦 Thêm model";
       this.isSelectingLocation = false;
 
       this.handler.removeInputAction(ScreenSpaceEventType.LEFT_CLICK);
@@ -124,7 +212,7 @@ export class UploadModelHandler {
     this.isSelectingLocation = false;
     const btnUpModel = document.getElementById("btnUpModel");
     btnUpModel.classList.remove("active");
-    btnUpModel.textContent = "📦 Thêm model";
+    this.showNotification("Đã hủy chọn vị trí", "info");
   }
 
   /**
@@ -220,31 +308,56 @@ export class UploadModelHandler {
   }
 
   /**
-   * Setup events cho popup
+   * Setup events cho popup - CHỈ THÊM EVENT LISTENER MỘT LẦN
    */
   setupPopupEvents() {
     const modal = document.getElementById("uploadModal");
+
+    // Kiểm tra xem đã có listener chưa bằng cách đặt custom attribute
+    if (modal.getAttribute("data-events-bound") === "true") {
+      return; // Đã có listener rồi, không thêm nữa
+    }
+
     const closeBtn = modal.querySelector(".close");
     const cancelBtn = document.getElementById("btnUploadCancel");
     const submitBtn = document.getElementById("btnUploadSubmit");
     const fileInput = document.getElementById("glbFile");
 
-    closeBtn.addEventListener("click", () => this.closeModal());
-    cancelBtn.addEventListener("click", () => this.closeModal());
-    submitBtn.addEventListener("click", () => this.submitUpload());
+    // Tạo hàm xử lý đóng modal
+    const closeModalHandler = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.closeModal();
+    };
+
+    // Tạo hàm xử lý submit
+    const submitHandler = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.submitUpload();
+    };
+
+    // Thêm event listeners với cùng function reference
+    closeBtn.addEventListener("click", closeModalHandler);
+    cancelBtn.addEventListener("click", closeModalHandler);
+    submitBtn.addEventListener("click", submitHandler);
 
     // ✅ Sync rotation slider và input
     const setupRotationSync = (sliderId, inputId) => {
       const slider = document.getElementById(sliderId);
       const input = document.getElementById(inputId);
 
-      slider.addEventListener("input", (e) => {
-        input.value = e.target.value;
-      });
+      if (slider && input) {
+        const syncHandler = () => {
+          input.value = slider.value;
+        };
+        const syncInputHandler = () => {
+          slider.value = input.value;
+        };
 
-      input.addEventListener("input", (e) => {
-        slider.value = e.target.value;
-      });
+        slider.addEventListener("input", syncHandler);
+        input.addEventListener("input", syncInputHandler);
+      }
     };
 
     setupRotationSync("rotationX", "rotationXValue");
@@ -257,6 +370,7 @@ export class UploadModelHandler {
       if (fileName) {
         fileInfo.textContent = `✓ ${fileName}`;
         fileInfo.style.color = "#4caf50";
+        this.showNotification(`Đã chọn file: ${fileName}`, "success");
       }
     });
 
@@ -265,6 +379,9 @@ export class UploadModelHandler {
         this.closeModal();
       }
     });
+
+    // Đánh dấu đã bind events
+    modal.setAttribute("data-events-bound", "true");
   }
 
   /**
@@ -290,11 +407,13 @@ export class UploadModelHandler {
     document.getElementById("uploadStatus").innerHTML = "";
 
     modal.style.display = "block";
+    this.showNotification("Vui lòng điền thông tin model và chọn file", "info");
   }
 
   closeModal() {
     const modal = document.getElementById("uploadModal");
     modal.style.display = "none";
+    this.showNotification("Đã đóng cửa sổ upload", "info");
   }
 
   /**
@@ -319,20 +438,23 @@ export class UploadModelHandler {
 
     if (!glbFile) {
       this.showError("❌ Vui lòng chọn file .glb");
+      this.showNotification("Vui lòng chọn file .glb", "error");
       return;
     }
 
     if (!modelName) {
       this.showError("❌ Vui lòng nhập tên model");
+      this.showNotification("Vui lòng nhập tên model", "error");
       return;
     }
 
     if (!glbFile.name.endsWith(".glb")) {
       this.showError("❌ Chỉ chấp nhận file .glb");
+      this.showNotification("Chỉ chấp nhận file định dạng .glb", "error");
       return;
     }
 
-    console.log(`📦 Uploading: ${modelName} (${glbFile.name})`);
+    this.showNotification(`Đang upload: ${modelName}`, "info");
     this.uploadModel(
       glbFile,
       modelName,
@@ -372,7 +494,7 @@ export class UploadModelHandler {
       formData.append("rotation_y", rotY);
       formData.append("rotation_z", rotZ);
 
-      console.log("📤 Gửi request tới API...");
+      this.showNotification("Đang gửi dữ liệu lên server...", "info");
 
       const response = await fetch("http://localhost:8000/api/upload-glb/", {
         method: "POST",
@@ -383,7 +505,6 @@ export class UploadModelHandler {
       });
 
       const contentType = response.headers.get("content-type");
-      console.log("📡 Response Content-Type:", contentType);
 
       if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text();
@@ -391,13 +512,14 @@ export class UploadModelHandler {
         this.showError(
           `❌ Server Error: ${response.status} ${response.statusText}`
         );
+        this.showNotification("Lỗi server: Phản hồi không hợp lệ", "error");
         return;
       }
 
       const data = await response.json();
 
       if (response.ok) {
-        console.log("✅ Upload thành công!");
+        this.showNotification(`✅ Upload thành công: ${name}`, "success");
         statusDiv.innerHTML = '<p class="success">✅ Upload thành công!</p>';
 
         // ✅ Load model realtime (không cần reload)
@@ -422,12 +544,17 @@ export class UploadModelHandler {
       } else {
         console.error("❌ Upload failed:", data);
         this.showError(data.message || `❌ Lỗi: ${data.error}`);
+        this.showNotification(
+          `Upload thất bại: ${data.error || "Lỗi không xác định"}`,
+          "error"
+        );
         this.enableMapInteraction();
         this.isUploading = false;
       }
     } catch (error) {
       console.error("❌ Network error:", error);
       this.showError(`❌ Lỗi: ${error.message}`);
+      this.showNotification(`Lỗi mạng: ${error.message}`, "error");
       this.enableMapInteraction();
       this.isUploading = false;
     } finally {
@@ -449,7 +576,7 @@ export class UploadModelHandler {
     rotZ
   ) {
     try {
-      console.log("🔄 Loading model realtime...");
+      this.showNotification("Đang tải model lên bản đồ...", "info");
 
       const position = Cartesian3.fromDegrees(lon, lat, height);
       const modelMatrix = Transforms.eastNorthUpToFixedFrame(position);
@@ -461,7 +588,7 @@ export class UploadModelHandler {
       });
 
       this.viewer.scene.primitives.add(model);
-      console.log("✅ Model loaded on map!");
+      this.showNotification("Model đã được tải thành công!", "success");
 
       // ✅ Zoom tới model
       this.viewer.camera.flyTo({
@@ -470,6 +597,7 @@ export class UploadModelHandler {
       });
     } catch (error) {
       console.error("❌ Error loading model realtime:", error);
+      this.showNotification("Lỗi khi tải model lên bản đồ", "error");
     }
   }
 
@@ -502,7 +630,6 @@ export class UploadModelHandler {
       }
     }
 
-    console.log("🔐 CSRF Token found:", cookieValue ? "✅ Yes" : "❌ No");
     return cookieValue || "";
   }
 }

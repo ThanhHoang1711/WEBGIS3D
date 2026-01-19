@@ -20,17 +20,30 @@
       <button id="btnModel" class="btnControl">
         <img class="imgControl" :src="require('@/assets/img/model.png')" />
       </button>
+
+      <!-- ✅ NÚT THÊM 1 MODEL GLB -->
+      <button id="btnUpModel" class="btnControl" title="Thêm 1 Model GLB">
+        📦
+      </button>
+
+      <!-- ✅ NÚT THÊM NHIỀU MODELS (I3DM) -->
+      <button
+        id="btnAddInstances"
+        class="btnControl"
+        title="Thêm Nhiều Models (I3DM)"
+      >
+        🔥
+      </button>
     </div>
 
     <!-- Panel hiện nút đo chiều cao và nút lấy tọa độ điểm -->
     <div id="panelMeasure">
       <div class="divMeasure">
         <button id="btnHeight" @click="toggleHeightMeasure">
-<<<<<<< Updated upstream
-          <img :src="require('@/assets/img/measure.png')" />
-=======
-          <img class="imgMeasure" :src="require('@/assets/img/HeightModel.png')"/>
->>>>>>> Stashed changes
+          <img
+            class="imgMeasure"
+            :src="require('@/assets/img/HeightModel.png')"
+          />
           {{ measureActive ? "Tắt Đo chiều cao" : "Đo chiều cao" }}
         </button>
         <label class="labelMeasure">Đo chiều cao</label>
@@ -38,11 +51,10 @@
 
       <div class="divMeasure">
         <button id="btnLocate" @click="toggleLocatePoint">
-<<<<<<< Updated upstream
-          <img :src="require('@/assets/img/measure.png')" />
-=======
-          <img class="imgMeasure" :src="require('@/assets/img/LocateModel.jpg')"/>
->>>>>>> Stashed changes
+          <img
+            class="imgMeasure"
+            :src="require('@/assets/img/LocateModel.jpg')"
+          />
           {{ locateActive ? "Tắt Lấy tọa độ" : "Lấy tọa độ" }}
         </button>
         <label class="labelMeasure">Lấy tọa độ</label>
@@ -50,11 +62,7 @@
 
       <div class="divMeasure">
         <button id="btnStopMeasure" @click="clearAllMeasurements">
-<<<<<<< Updated upstream
-          <img :src="require('@/assets/img/measure.png')" />
-=======
-          <img id="imgDelete" :src="require('@/assets/img/DeleteModel.png')"/>
->>>>>>> Stashed changes
+          <img id="imgDelete" :src="require('@/assets/img/DeleteModel.png')" />
         </button>
         <label class="labelMeasure">Xóa phép đo</label>
       </div>
@@ -94,9 +102,8 @@
 <script>
 import "./css/MapView.css";
 import "./css/ModelManager.css";
+import "./css/UploadI3DM.css";
 import "./css/UpLoadModel.css";
 import MapLogic from "./js/Map.js";
 export default MapLogic;
 </script>
-
-<style scoped></style>

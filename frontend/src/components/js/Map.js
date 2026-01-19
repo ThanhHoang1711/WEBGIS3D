@@ -20,6 +20,9 @@ import {
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { setupWaterControl } from "./WaterControl";
 import { ModelManager } from "./ModelManager";
+// ✅ Import 2 module mới
+import { UploadModelHandler } from "./UpLoadModel";
+import { UploadI3DM } from "./UploadI3DM";
 
 export default {
   name: "MapView",
@@ -28,6 +31,9 @@ export default {
       viewer: null,
       basemapLayer: null,
       modelManager: null,
+      // ✅ Thêm 2 module mới
+      uploadModelHandler: null,
+      uploadI3DM: null,
 
       // attribute (bảng thuộc tính)
       attrHandler: null,
@@ -141,17 +147,22 @@ export default {
       // ✅ Khởi tạo ModelManager
       this.modelManager = new ModelManager(this.viewer);
       console.log("✅ Model Manager initialized");
-
-      // ✅ Gán window.modelManager để access từ HTML
       window.modelManager = this.modelManager;
+
+      // ✅ Khởi tạo UploadModelHandler (thêm 1 model GLB)
+      this.uploadModelHandler = new UploadModelHandler(this.viewer);
+      console.log("✅ UploadModelHandler initialized");
+      window.uploadModelHandler = this.uploadModelHandler;
+
+      // ✅ Khởi tạo UploadI3DM (thêm nhiều models)
+      this.uploadI3DM = new UploadI3DM(this.viewer);
+      console.log("✅ UploadI3DM initialized");
+      window.uploadI3DM = this.uploadI3DM;
 
       // 🔹 Gán nút toggle bản đồ nền
       document
         .getElementById("btnBasemap")
         .addEventListener("click", () => this.toggleBasemap());
-
-      // ✅ ModelManager đã tự động gán sự kiện cho btnModel trong init()
-      // Không cần gán thêm ở đây để tránh trùng lặp
     },
 
     /* =========================

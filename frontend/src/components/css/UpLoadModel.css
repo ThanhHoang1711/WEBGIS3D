@@ -2,7 +2,7 @@
 .modal {
   display: none;
   position: fixed;
-  z-index: 1000;
+  z-index: 10000;
   left: 0;
   top: 0;
   width: 100%;
@@ -12,8 +12,12 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal-content {
@@ -57,7 +61,7 @@
   color: #fff;
 }
 
-/* ===== COMPACT FORM STYLES ===== */
+/* ===== CONTAINER STYLES ===== */
 .upload-container h2 {
   margin: 0 0 15px 0;
   color: #4caf50;
@@ -84,14 +88,9 @@
   letter-spacing: 0.5px;
 }
 
-/* ===== COMPACT FORM GROUPS ===== */
+/* ===== FORM GROUPS ===== */
 .form-group {
-  margin-bottom: 12px;
-  display: flex;
-}
-
-.form-group:last-child {
-  margin-bottom: 0;
+  margin-bottom: 15px;
 }
 
 .form-group label {
@@ -99,11 +98,7 @@
   margin-bottom: 5px;
   color: #ccc;
   font-weight: 500;
-  font-size: 12px;
-  text-transform: uppercase;
-  width: 30%;
-  padding-top: 10px;
-  padding-right: 10px;
+  font-size: 13px;
 }
 
 .form-group input[type="text"],
@@ -136,302 +131,274 @@
   margin-right: 8px;
 }
 
-/* ===== UPLOAD PANEL COMPACT ===== */
-#uploadPanel {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 400px;
-  height: 80%;
-  background: #2c2c2c;
-  z-index: 1001;
-  display: none;
-}
-
-#uploadPanel .panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 5px 15px;
-  border-bottom: 1px solid #444;
-  background: #1a1a1a;
-}
-
-#uploadPanel .panel-header h2 {
-  margin: 0;
-  font-size: 16px;
-  color: #4caf50;
-}
-
-#uploadPanel .btn-back,
-#uploadPanel .btn-close-panel {
-  background: none;
-  border: none;
-  color: #aaa;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 5px;
-  border-radius: 3px;
-}
-
-#uploadPanel .btn-back:hover,
-#uploadPanel .btn-close-panel:hover {
-  color: #fff;
-  background: #333;
-}
-
-#uploadPanel .panel-content {
-  padding: 15px;
-  height: calc(100% - 60px);
-  overflow-y: auto;
-}
-
-/* ===== COMPACT FORM LAYOUT ===== */
-.upload-panel .form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 15px;
-}
-
-.upload-panel .form-group {
-  margin-bottom: 12px;
-}
-
-.upload-panel .form-group.full-width {
-  grid-column: 1 / -1;
-}
-
-.upload-panel label {
-  display: block;
-  margin-bottom: 5px;
-  color: #ccc;
-  font-size: 12px;
-  font-weight: 500;
-  text-transform: uppercase;
-}
-
-.upload-panel input[type="text"],
-.upload-panel input[type="number"],
-.upload-panel input[type="file"] {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #555;
-  border-radius: 4px;
-  background: #333;
-  color: #fff;
-  font-size: 13px;
-  box-sizing: border-box;
-}
-
-.upload-panel input:focus {
-  outline: none;
-  border-color: #4caf50;
-}
-
-/* ===== COMPACT COORDINATES ===== */
-.upload-panel .coordinates-display {
+/* ===== COORDINATES DISPLAY ===== */
+.coordinates-display {
   background: #1a1a1a;
   border: 1px solid #444;
   border-radius: 6px;
   padding: 12px;
+  margin-bottom: 15px;
+}
+
+.coord-item {
   margin-bottom: 10px;
 }
 
-.upload-panel .coord-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+.coord-item:last-child {
+  margin-bottom: 0;
 }
 
-.upload-panel .coord-item {
-  display: flex !important;
-  flex-direction: row !important; /* Thêm dòng này */
-  align-items: center !important; /* Căn giữa theo chiều dọc */
-  gap: 8px !important; /* Khoảng cách giữa label và input */
-  margin-bottom: 5px;
-}
-
-.upload-panel .coord-item label {
+.coord-item label {
+  display: block;
   font-size: 11px;
   color: #999;
   margin-bottom: 3px;
-  width: 25%;
+  text-transform: uppercase;
 }
 
-.upload-panel .coord-item input {
+.coord-item input {
+  width: 100%;
   background: #333;
   border: 1px solid #555;
   color: #4caf50;
+  padding: 8px 10px;
+  border-radius: 3px;
+  font-size: 13px;
+  cursor: not-allowed;
+  box-sizing: border-box;
+}
+
+/* ===== ROTATION CONTROLS ===== */
+.rotation-controls {
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 15px;
+}
+
+.rotation-controls h3 {
+  margin: 0 0 12px 0;
+  color: #4caf50;
+  font-size: 14px;
+  text-align: center;
+}
+
+.rotation-item {
+  margin-bottom: 12px;
+}
+
+.rotation-item:last-child {
+  margin-bottom: 0;
+}
+
+.rotation-item label {
+  display: block;
+  font-size: 11px;
+  color: #999;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.rotation-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rotation-input input[type="range"] {
+  flex: 1;
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.rotation-input input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #4caf50;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.rotation-input input[type="number"] {
+  width: 60px;
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
   padding: 6px 8px;
   border-radius: 3px;
   font-size: 12px;
-  cursor: not-allowed;
+  text-align: center;
 }
 
-/* ===== COMPACT BUTTONS ===== */
-.upload-panel .btn-select {
-  width: 100%;
-  padding: 5px;
-  background: #2196f3;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 13px;
-  cursor: pointer;
-  margin-bottom: 15px;
-  transition: background 0.2s;
+.rotation-input span {
+  color: #ccc;
+  font-size: 12px;
+  width: 20px;
 }
 
-.upload-panel .btn-select:hover {
-  background: #1976d2;
+/* ===== FILE UPLOAD ===== */
+.file-info {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-top: 5px;
+  min-height: 18px;
 }
 
-.upload-panel .button-group {
-  grid-column: 1 / -1;
-  margin-top: 15px;
+.file-info:empty::before {
+  content: "Chưa chọn file";
+  color: #666;
 }
 
-.upload-panel .btn-submit {
-  width: 100%;
-  padding: 5px;
-  background: #4caf50;
-  color: white;
+/* ===== BUTTON GROUP ===== */
+.button-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-submit,
+.btn-cancel {
+  flex: 1;
+  padding: 10px;
   border: none;
   border-radius: 4px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
-.upload-panel .btn-submit:hover:not(:disabled) {
+.btn-submit {
+  background: #4caf50;
+  color: white;
+}
+
+.btn-submit:hover:not(:disabled) {
   background: #45a049;
+  transform: translateY(-1px);
 }
 
-.upload-panel .btn-submit:disabled {
+.btn-submit:disabled {
   background: #666;
   cursor: not-allowed;
+  transform: none;
 }
 
-/* ===== COMPACT ROTATION ===== */
-.upload-panel .rotation-controls {
-  background: #1a1a1a;
-  border: 1px solid #444;
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 15px;
+.btn-cancel {
+  background: #666;
+  color: white;
 }
 
-.upload-panel .rotation-controls h4 {
-  margin: 0 0 10px 0;
-  color: #4caf50;
-  font-size: 13px;
-  text-transform: uppercase;
+.btn-cancel:hover {
+  background: #777;
+  transform: translateY(-1px);
 }
 
-.upload-panel .rotation-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.upload-panel .rotation-item {
-  display: flex !important;
-  flex-direction: row !important; /* Thêm dòng này */
-  align-items: center !important; /* Căn giữa theo chiều dọc */
-  gap: 8px !important; /* Khoảng cách giữa label và input */
-  margin-bottom: 5px;
-}
-
-.upload-panel .rotation-item label {
-  font-size: 11px;
-  color: #999;
-  margin-bottom: 3px;
-  width: 20%;
-}
-
-.upload-panel .rotation-item input {
-  background: #333;
-  border: 1px solid #555;
-  color: #fff;
-  padding: 6px 8px;
-  border-radius: 3px;
-  font-size: 12px;
-  width: 60%;
-}
-
-/* ===== COMPACT FILE UPLOAD ===== */
-.upload-panel .file-upload {
-  background: #1a1a1a;
-  border: 1px solid #444;
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 15px;
-}
-
-.upload-panel .file-info {
-  display: block;
-  font-size: 11px;
-  color: #888;
-  margin-top: 5px;
-}
-
-/* ===== COMPACT STATUS ===== */
-.upload-panel .upload-status {
-  grid-column: 1 / -1;
+/* ===== UPLOAD STATUS ===== */
+.upload-status {
+  margin-top: 15px;
+  padding: 10px;
+  border-radius: 4px;
   text-align: center;
-  margin-top: 10px;
+  font-size: 13px;
   min-height: 20px;
 }
 
-.upload-panel .upload-status p {
-  margin: 0;
-  font-size: 12px;
+.upload-status .loading {
+  color: #2196f3;
+  background: rgba(33, 150, 243, 0.1);
   padding: 8px;
   border-radius: 3px;
 }
 
-.upload-panel .upload-status .success {
+.upload-status .success {
   color: #4caf50;
   background: rgba(76, 175, 80, 0.1);
+  padding: 8px;
+  border-radius: 3px;
 }
 
-.upload-panel .upload-status .error {
+.upload-status .error {
   color: #f44336;
   background: rgba(244, 67, 54, 0.1);
+  padding: 8px;
+  border-radius: 3px;
+}
+
+/* ===== NOTIFICATION STYLES ===== */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 4px;
+  z-index: 10001;
+  max-width: 300px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  color: white;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  animation: slideIn 0.3s ease;
+}
+
+.notification-info {
+  background: #2196f3;
+}
+
+.notification-success {
+  background: #4caf50;
+}
+
+.notification-error {
+  background: #f44336;
 }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 480px) {
-  .upload-panel .form-grid {
-    grid-template-columns: 1fr;
+  .modal-content {
+    margin: 10% auto;
+    padding: 15px;
+    max-width: 95%;
   }
-  
-  .upload-panel .coord-grid,
-  .upload-panel .rotation-grid {
-    grid-template-columns: 1fr;
+
+  .button-group {
+    flex-direction: column;
+  }
+
+  .rotation-input {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .rotation-input input[type="number"] {
+    width: 100px;
   }
 }
 
 /* Ẩn thanh cuộn tinh tế */
-.upload-panel .panel-content::-webkit-scrollbar {
-  width: 4px;
+.modal-content::-webkit-scrollbar {
+  width: 6px;
 }
 
-.upload-panel .panel-content::-webkit-scrollbar-track {
+.modal-content::-webkit-scrollbar-track {
   background: #1a1a1a;
+  border-radius: 3px;
 }
 
-.upload-panel .panel-content::-webkit-scrollbar-thumb {
+.modal-content::-webkit-scrollbar-thumb {
   background: #4caf50;
-  border-radius: 2px;
+  border-radius: 3px;
 }
 
-#uploadStatus {
-  display: none;
-}
-
+/* ===== CÁC CLASS KHÔNG DÙNG ĐƯỢC ẨN ĐI ===== */
+#uploadPanel,
+#uploadStatus,
 #btnConvert3DTiles {
   display: none;
 }

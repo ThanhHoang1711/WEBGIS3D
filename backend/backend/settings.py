@@ -25,8 +25,8 @@ SECRET_KEY = 'django-insecure-*2-3(&on&%3d+t5^#q6q8wr^kl#*zyi3fw8nv@o+63h4$)s3g9
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# ALLOWED_HOSTS = []
-
+# Thêm địa chỉ frontend vào ALLOWED_HOSTS
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
 # Application definition
 
@@ -37,9 +37,21 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'glb_app',
     'corsheaders',
+    'rest_framework',
+    'glb_app','i3dm_app',
 ]
+
+# Thêm cấu hình REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',  # ✅ Cho phép tất cả (cho dev)
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ],
+}
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -58,10 +70,37 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# Cấu hình CORS chi tiết
+CORS_ALLOW_ALL_ORIGINS = True  # Cho development
+CORS_ALLOW_CREDENTIALS = True  # Quan trọng: cho phép credentials
+
+# CORS cấu hình chi tiết (tùy chọn, nếu muốn cụ thể hơn)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8081",
+    "http://127.0.0.1:8081",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+
+# CSRF cấu hình
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8081',
+    'http://127.0.0.1:8081',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+
+# Cookie settings - QUAN TRỌNG
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_HTTPONLY = False  # Cho phép JavaScript truy cập CSRF token
+CSRF_COOKIE_SECURE = False  # Đặt True nếu dùng HTTPS
+CSRF_USE_SESSIONS = False  # Lưu CSRF token trong cookie thay vì session
+
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = False  # Đặt True nếu dùng HTTPS
 
 ROOT_URLCONF = 'backend.urls'
-
-CORS_ALLOW_ALL_ORIGINS = True
 
 TEMPLATES = [
     {
@@ -87,7 +126,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'djg',
+        'NAME': 'WEB3D',
         'USER': 'postgres',
         'PASSWORD': 'tranbonho',
         'HOST': 'localhost',
