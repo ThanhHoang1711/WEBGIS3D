@@ -28,7 +28,11 @@ button {
   top: 45px;
   right: 10px;
   z-index: 1;
+<<<<<<< Updated upstream
   height: 150px;
+=======
+  height: 130px;
+>>>>>>> Stashed changes
   width: 30px;
   border-radius: 10px;
   background-color: white;
@@ -46,6 +50,11 @@ button {
   display: flex;
   flex-direction: column; /* Nếu các nút xếp dọc */
   align-items: center; /* Căn giữa theo chiều ngang */
+  height: 25px;
+  width: 25px;
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 
 .btnControl:hover img {
@@ -67,31 +76,36 @@ button {
   cursor: pointer;
 }
 
-/************************************************************* Nút quản lý Model */
-#btnModel {
-  height: 25px;
-  width: 25px;
-  background: none;
-  border: none;
-  cursor: pointer;
+/************************************************************* Panel Hiển thị cảnh LoD */
+#panelLoD {
+  position: absolute;
+  top: 70px;
+  right: 50px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 15px;
+  z-index: 1;
+  display: none; /* Mặc định ẩn */
+  backdrop-filter: blur(10px);
 }
 
-/************************************************************* Nút đo model */
-#btnMeasure {
-  height: 25px;
-  width: 25px;
-  background: none;
-  border: none;
-  cursor: pointer;
+/* Khi panel hiển thị */
+#panelLoD[style*="display: block"],
+#panelLoD.show {
+  display: block;
+  animation: fadeIn 0.3s ease;
 }
 
-/************************************************************* Nút quản lý Model */
-#btnModel {
-  height: 25px;
-  width: 25px;
-  background: none;
-  border: none;
-  cursor: pointer;
+/* Trong panel LoD, nút nào active thì có class 'active' */
+.btnMeasure.active {
+  border: 3px solid #4CAF50 !important;
+  background: #f8f9fa !important;
+}
+
+/* Các nút khác - bình thường */
+.btnMeasure:not(.active) {
+  border: 2px solid transparent !important;
 }
 
 /************************************************************* Panel đo model */
@@ -115,6 +129,7 @@ button {
   animation: fadeIn 0.3s ease;
 }
 
+/************************************************************* Nội dung panel đo */
 .divMeasure {
   display: flex;
   flex-direction: column;
@@ -122,9 +137,7 @@ button {
 }
 
 /* Các nút bấm - Thiết kế theo mẫu Standard/Hybrid/Satellite */
-#btnStopMeasure,
-#btnHeight,
-#btnLocate {
+.btnMeasure {
   width: 100%;
   padding: 14px 16px;
   border: 2px solid transparent;
@@ -142,15 +155,16 @@ button {
   width: 80px;
 }
 
+#btnLoD0,
+#btnLoD1, 
+#btnLoD2,
 #btnHeight,
 #btnLocate {
   margin-right: 10px;
 }
 
 /* Hiệu ứng hover giống mẫu */
-#btnStopMeasure:hover,
-#btnHeight:hover,
-#btnLocate:hover {
+.btnMeasure:hover {
   background: #e9ecef;
   border-color: #dee2e6;
   transform: translateY(-1px);
@@ -158,9 +172,7 @@ button {
 }
 
 /* Khi nút đang active */
-#btnStopMeasure.active,
-#btnHeight.active,
-#btnLocate.active {
+.btnMeasure.active {
   background: linear-gradient(135deg, #4caf50, #45a049);
   color: white;
   border-color: #3d8b40;
@@ -168,9 +180,7 @@ button {
 }
 
 /* Hiệu ứng ripple cho nút */
-#btnStopMeasure::after,
-#btnHeight::after,
-#btnLocate::after {
+.btnMeasure::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -184,9 +194,7 @@ button {
   transform-origin: 50% 50%;
 }
 
-#btnStopMeasure:focus(:active)::after,
-#btnHeight:focus:not(:active)::after,
-#btnLocate:focus:not(:active)::after {
+.btnMeasure:focus:not(:active)::after {
   animation: ripple 1s ease-out;
 }
 
@@ -226,26 +234,20 @@ button {
     min-width: auto;
   }
 
-  #btnStopMeasure,
-  #btnHeight,
-  #btnLocate {
+  .btnMeasure {
     padding: 12px 14px;
     font-size: 13px;
   }
 }
 
 /* Trạng thái disabled */
-#btnStopMeasure:disabled,
-#btnHeight:disabled,
-#btnLocate:disabled {
+.btnMeasure:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none !important;
 }
 
-#btnStopMeasure:disabled:hover,
-#btnHeight:disabled:hover,
-#btnLocate:disabled:hover {
+.btnMeasure:disabled:hover {
   background: #f8f9fa;
   border-color: transparent;
   box-shadow: none;

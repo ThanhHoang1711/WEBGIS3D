@@ -39,7 +39,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
-    'glb_app','i3dm_app',
+    'glb_app',
+    'i3dm_app',
+    'QLModel',
 ]
 
 # Thêm cấu hình REST Framework
@@ -126,9 +128,9 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'WEB3D',
+        'NAME': 'bade',
         'USER': 'postgres',
-        'PASSWORD': 'tranbonho',
+        'PASSWORD': '453918',
         'HOST': 'localhost',
         'PORT': '5432',
     }
