@@ -1,20 +1,27 @@
 <template>
   <div class="main-page">
-    <!-- MapView chiếm toàn màn hình -->
-    <div class="map-container">
+    <!-- MapView - CHỈ HIỆN KHI CHỌN "Bản đồ" -->
+    <div class="map-container" v-if="currentView === 'maps'">
       <MapView />
     </div>
 
-    <!-- Sidebar đè lên map ở góc trái -->
-    <aside 
-      :class="['sidebar-overlay', { 'collapsed': isSidebarCollapsed }]"
+    <!-- ✅ DIV MỚI - HIỆN KHI CHỌN Dashboard/Reports/Settings -->
+    <div class="content-container" v-else>
+      <Dashboard v-if="currentView === 'dashboard'" />
+      <Reports v-if="currentView === 'reports'" />
+      <Settings v-if="currentView === 'settings'" />
+    </div>
+
+    <!-- Sidebar đè lên map ở góc trái - GIỮ NGUYÊN CODE CŨ -->
+    <aside
+      :class="['sidebar-overlay', { collapsed: isSidebarCollapsed }]"
       :style="{ width: isSidebarCollapsed ? '60px' : '200px' }"
     >
       <Sidebar
         :is-collapsed="isSidebarCollapsed"
         @menu-selected="handleMenuSelect"
         @toggle-sidebar="toggleSidebar"
-        :class="{ 'collapsed': isSidebarCollapsed }" 
+        :class="{ collapsed: isSidebarCollapsed }"
       />
     </aside>
   </div>
@@ -24,31 +31,40 @@
 import MapView from "./MapView.vue";
 import Sidebar from "./Sidebar.vue";
 
+// Import các component mới
+import Dashboard from "./Dashboard.vue";
+import Reports from "./Reports.vue";
+import Settings from "./Settings.vue";
+
 export default {
   name: "MainPage",
   components: {
     MapView,
-    Sidebar
+    Sidebar,
+    Dashboard,
+    Reports,
+    Settings,
   },
   props: {
     title: {
       type: String,
-      default: "Ứng dụng Bản đồ"
+      default: "Ứng dụng Bản đồ",
     },
     showHeader: {
       type: Boolean,
-      default: false // Mặc định không hiện header
+      default: false,
     },
     showFooter: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
   data() {
     return {
       isSidebarCollapsed: false,
       showContentPanel: false,
-      selectedMenuItem: null
+      selectedMenuItem: null,
+      currentView: "maps", // ✅ THÊM: Quản lý view hiện tại
     };
   },
   methods: {
@@ -57,19 +73,25 @@ export default {
     },
     handleMenuSelect(menuItem) {
       this.selectedMenuItem = menuItem;
-      this.showContentPanel = true;
-      
-      switch(menuItem.id) {
-        case 'maps':
+
+      // ✅ THÊM: Chuyển đổi view dựa trên menu
+      this.currentView = menuItem.id;
+
+      // Giữ lại logic cũ nếu cần
+      switch (menuItem.id) {
+        case "maps":
           this.showContentPanel = false;
           break;
-        case 'layers':
+        case "dashboard":
+        case "reports":
+        case "settings":
+          this.showContentPanel = true;
           break;
-        case 'analysis':
-          break;
+        default:
+          this.showContentPanel = false;
       }
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -78,7 +100,7 @@ export default {
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  position: relative; /* Quan trọng: tạo context cho absolute */
+  position: relative;
 }
 
 /* Map chiếm toàn màn hình */
@@ -88,10 +110,30 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 1; /* Map ở dưới */
+  z-index: 1;
 }
 
-/* Sidebar đè lên map */
+/* ✅ THÊM: Content container cho Dashboard/Reports/Settings */
+.content-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #ecf0f1;
+  z-index: 1;
+  overflow-y: auto;
+  padding: 40px;
+  padding-left: 240px; /* 200px sidebar + 40px margin */
+  transition: padding-left 0.3s ease;
+}
+
+/* Khi sidebar collapsed */
+.sidebar-overlay.collapsed ~ .content-container {
+  padding-left: 100px; /* 60px sidebar + 40px margin */
+}
+
+/* Sidebar đè lên map - GIỮ NGUYÊN */
 .sidebar-overlay {
   position: absolute;
   top: 0;
@@ -101,8 +143,8 @@ export default {
   transition: width 0.3s ease;
   overflow: hidden;
   flex-shrink: 0;
-  z-index: 10; /* Sidebar ở trên map */
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3); /* Đổ bóng cho đẹp */
+  z-index: 10;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
 }
 
 .sidebar-overlay.collapsed {
@@ -114,7 +156,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: rgba(248, 249, 250, 0.9); /* Trong suốt */
+  background-color: rgba(248, 249, 250, 0.9);
   padding: 1rem;
   border-bottom: 1px solid #dee2e6;
   min-height: 60px;
@@ -122,7 +164,7 @@ export default {
   top: 0;
   left: 0;
   width: 100%;
-  z-index: 5; /* Dưới sidebar nhưng trên map */
+  z-index: 5;
 }
 
 .main-header h1 {
@@ -139,7 +181,7 @@ export default {
   height: 100%;
   background-color: white;
   box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
-  z-index: 8; /* Dưới sidebar nhưng trên map */
+  z-index: 8;
   overflow-y: auto;
   padding: 20px;
 }
@@ -160,16 +202,21 @@ export default {
 /* Responsive design */
 @media (max-width: 768px) {
   .sidebar-overlay {
-    position: fixed; /* Trên mobile dùng fixed */
+    position: fixed;
   }
-  
+
   .sidebar-overlay.collapsed {
     transform: translateX(-100%);
-    width: 200px; /* Giữ nguyên width khi ẩn */
+    width: 200px;
   }
-  
+
   .content-panel {
     width: 100%;
+  }
+
+  .content-container {
+    padding: 20px;
+    padding-left: 20px;
   }
 }
 </style>
