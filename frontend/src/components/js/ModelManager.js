@@ -1,4 +1,12 @@
-import { Cartesian3, Transforms, Model } from "cesium";
+import {
+  Cartesian3,
+  Transforms,
+  Model,
+  HeadingPitchRange,
+  Math as CesiumMath,
+  Color,
+  Matrix4,
+} from "cesium";
 
 export class ModelManager {
   constructor(viewer) {
@@ -47,38 +55,38 @@ export class ModelManager {
       console.log(`✅ Loaded ${this.allModels.length} models`);
       this.currentPage = 1;
       this.updatePaginationTable();
-      this.loadAllModelsOnMap();
+      // this.loadAllModelsOnMap();
     } catch (error) {
       console.error("❌ Error loading models:", error);
     }
   }
 
-  async loadAllModelsOnMap() {
-    try {
-      for (const modelData of this.allModels) {
-        if (!this.primitives.has(modelData.id)) {
-          const position = Cartesian3.fromDegrees(
-            modelData.lon,
-            modelData.lat,
-            modelData.height
-          );
-          const modelMatrix = Transforms.eastNorthUpToFixedFrame(position);
+  // async loadAllModelsOnMap() {
+  //   try {
+  //     for (const modelData of this.allModels) {
+  //       if (!this.primitives.has(modelData.id)) {
+  //         const position = Cartesian3.fromDegrees(
+  //           modelData.lon,
+  //           modelData.lat,
+  //           modelData.height
+  //         );
+  //         const modelMatrix = Transforms.eastNorthUpToFixedFrame(position);
 
-          const model = await Model.fromGltfAsync({
-            url: modelData.url,
-            modelMatrix: modelMatrix,
-            scale: modelData.scale || 1,
-          });
+  //         const model = await Model.fromGltfAsync({
+  //           url: modelData.url,
+  //           modelMatrix: modelMatrix,
+  //           scale: modelData.scale || 1,
+  //         });
 
-          const primitive = this.viewer.scene.primitives.add(model);
-          this.primitives.set(modelData.id, primitive);
-          console.log(`✅ Loaded on map: ${modelData.name}`);
-        }
-      }
-    } catch (error) {
-      console.error("❌ Error loading models on map:", error);
-    }
-  }
+  //         const primitive = this.viewer.scene.primitives.add(model);
+  //         this.primitives.set(modelData.id, primitive);
+  //         console.log(`✅ Loaded on map: ${modelData.name}`);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("❌ Error loading models on map:", error);
+  //   }
+  // }
 
   createManagerPanel() {
     const panelHtml = `
@@ -139,7 +147,7 @@ export class ModelManager {
         const totalCheckboxes =
           document.querySelectorAll(".model-checkbox").length;
         const checkedCheckboxes = document.querySelectorAll(
-          ".model-checkbox:checked"
+          ".model-checkbox:checked",
         ).length;
 
         if (checkAllBtn) {
@@ -191,7 +199,7 @@ export class ModelManager {
             <button class="btn-tool btn-delete" onclick="window.modelManager.deleteModel(${m.id})" title="Xoá">🗑️</button>
           </td>
         </tr>
-      `
+      `,
         )
         .join("");
     }
@@ -236,23 +244,86 @@ export class ModelManager {
   }
 
   zoomToModel(modelId) {
-    const model = this.allModels.find((m) => m.id === modelId);
-    if (!model) return;
+    const modelData = this.allModels.find((m) => m.id === modelId);
+    if (!modelData) return;
 
-    const position = Cartesian3.fromDegrees(
-      model.lon,
-      model.lat,
-      model.height + 100
+    // 📍 vị trí model
+    const targetPosition = Cartesian3.fromDegrees(
+      modelData.lon,
+      modelData.lat,
+      modelData.height,
     );
 
+    /* =========================
+     🎥 CAMERA – góc 45°
+     ========================= */
+    const heading = CesiumMath.toRadians(45);
+    const pitch = CesiumMath.toRadians(-45);
+    const range = 200;
+
     this.viewer.camera.flyTo({
-      destination: position,
-      duration: 1,
+      destination: targetPosition,
+      orientation: { heading, pitch, roll: 0 },
+      duration: 1.2,
+      complete: () => {
+        this.viewer.camera.lookAt(
+          targetPosition,
+          new HeadingPitchRange(heading, pitch, range),
+        );
+      },
     });
 
-    console.log(`🔍 Zoomed to: ${model.name}`);
+    /* =========================
+     🔎 TÌM MODEL TRONG SCENE
+     ========================= */
+    let primitive = null;
+    const primitives = this.viewer.scene.primitives;
+
+    for (let i = 0; i < primitives.length; i++) {
+      const p = primitives.get(i);
+      if (p?.modelMatrix) {
+        const pos = Matrix4.getTranslation(p.modelMatrix, new Cartesian3());
+
+        if (Cartesian3.distance(pos, targetPosition) < 1.0) {
+          primitive = p;
+          break;
+        }
+      }
+    }
+
+    if (!primitive) {
+      console.warn(
+        "⚠️ Không tìm được primitive để highlight (camera vẫn zoom)",
+      );
+      return;
+    }
+
+    /* =========================
+     ✨ HIỆU ỨNG CHỚP CHỚP
+     ========================= */
+    let visible = true;
+    const originalColor = primitive.color || Color.WHITE.clone();
+
+    const blinkInterval = setInterval(() => {
+      if (!primitive.isDestroyed()) {
+        primitive.color = visible
+          ? Color.YELLOW.withAlpha(0.9)
+          : Color.WHITE.withAlpha(0.3);
+        visible = !visible;
+      }
+    }, 300);
+
+    setTimeout(() => {
+      clearInterval(blinkInterval);
+      if (!primitive.isDestroyed()) {
+        primitive.color = originalColor;
+      }
+    }, 3000);
+
+    console.log(`🔍 Zoomed + highlighted: ${modelData.name}`);
   }
 
+  //Xoá
   async deleteModel(modelId) {
     if (!confirm("❌ Xác nhận xoá model này?")) return;
 
@@ -269,7 +340,7 @@ export class ModelManager {
         {
           method: "DELETE",
           headers: { "X-CSRFToken": this.csrfToken },
-        }
+        },
       );
 
       if (response.ok) {

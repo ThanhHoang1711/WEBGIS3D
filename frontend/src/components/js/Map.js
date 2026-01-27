@@ -23,7 +23,7 @@ import { ModelManager } from "./ModelManager";
 // ✅ Import 2 module mới
 import { UploadModelHandler } from "./UpLoadModel";
 import { UploadI3DM } from "./UploadI3DM";
-
+import { setupWaterFill } from "./WaterFill";
 // =========================
 // LỚP QUẢN LÝ LOD (LEVEL OF DETAIL)
 // =========================
@@ -32,10 +32,10 @@ class LODManager {
     this.viewer = viewer;
     this.currentLOD = 0; // Lưu LOD hiện tại
     this.isLoading = false; // Trạng thái đang tải
-    
+
     // Khởi tạo URLs cho các cấp độ chi tiết
     this.initLODUrls();
-    
+
     // Thiết lập sự kiện cho các nút LOD
     this.setupLODButtons();
   }
@@ -43,10 +43,10 @@ class LODManager {
   // Khởi tạo URLs cho từng cấp độ LOD
   initLODUrls() {
     this.lodUrls = {
-      0: "http://localhost:1000/tilesets/tiles",  // LoD0: Mức chi tiết thấp nhất
-      1: "http://localhost:1001/tilesets/tiles",  // LoD1: Mức chi tiết thấp
-      2: "http://localhost:1002/tilesets/tiles",  // LoD2: Mức chi tiết trung bình
-      3: "http://localhost:1002/tilesets/tiles",  // LoD3: Mức chi tiết cao (dùng chung URL với LoD2)
+      0: "http://localhost:8006/tilesets/tiles", // LoD0: Mức chi tiết thấp nhất
+      1: "http://localhost:8010/tilesets/tiles", // LoD1: Mức chi tiết thấp
+      2: "http://localhost:8011/tilesets/tiles", // LoD2: Mức chi tiết trung bình
+      3: "http://localhost:8012/tilesets/tiles", // LoD3: Mức chi tiết cao (dùng chung URL với LoD2)
     };
   }
 
@@ -54,26 +54,26 @@ class LODManager {
   setupLODButtons() {
     // Ánh xạ ID nút với cấp độ LOD
     const lodButtons = {
-      'btnLoD0': 0,
-      'btnLoD1': 1,
-      'btnLoD2': 2,
-      'btnLoD3': 3
+      btnLoD0: 0,
+      btnLoD1: 1,
+      btnLoD2: 2,
+      btnLoD3: 3,
     };
 
     // Gán sự kiện cho từng nút
-    Object.keys(lodButtons).forEach(buttonId => {
+    Object.keys(lodButtons).forEach((buttonId) => {
       const button = document.getElementById(buttonId);
       if (button) {
         const lodLevel = lodButtons[buttonId];
-        button.addEventListener('click', () => {
+        button.addEventListener("click", () => {
           this.switchToLOD(lodLevel);
         });
-        
+
         // Thêm tooltip cho nút
         button.title = `Chuyển sang LoD${lodLevel} (Cảnh ${lodLevel})`;
-        
+
         // Thêm lớp CSS cho nút
-        button.classList.add('lod-button');
+        button.classList.add("lod-button");
       }
     });
   }
@@ -82,15 +82,15 @@ class LODManager {
   async switchToLOD(lodLevel) {
     // Kiểm tra nếu đang tải
     if (this.isLoading) {
-      console.log('⏳ Đang tải terrain, vui lòng đợi...');
-      this.showNotification('Đang tải terrain, vui lòng đợi...', 'warning');
+      console.log("⏳ Đang tải terrain, vui lòng đợi...");
+      this.showNotification("Đang tải terrain, vui lòng đợi...", "warning");
       return;
     }
 
     // Kiểm tra nếu đã ở LOD này
     if (lodLevel === this.currentLOD) {
       console.log(`✓ LoD${lodLevel} đã được tải`);
-      this.showNotification(`Đã ở LoD${lodLevel}`, 'info');
+      this.showNotification(`Đã ở LoD${lodLevel}`, "info");
       return;
     }
 
@@ -110,7 +110,10 @@ class LODManager {
       console.log(`✅ Đã chuyển sang terrain LoD${lodLevel} thành công`);
     } catch (error) {
       console.error(`❌ Lỗi khi chuyển sang LoD${lodLevel}:`, error);
-      this.showNotification(`Lỗi khi tải LoD${lodLevel}: ${error.message}`, 'error');
+      this.showNotification(
+        `Lỗi khi tải LoD${lodLevel}: ${error.message}`,
+        "error",
+      );
     } finally {
       this.isLoading = false;
     }
@@ -126,14 +129,14 @@ class LODManager {
 
     try {
       console.log(`🌍 Đang tải terrain từ: ${url}`);
-      
+
       // Hiển thị thông báo loading
-      this.showNotification(`Đang tải terrain LoD${lodLevel}...`, 'info');
+      this.showNotification(`Đang tải terrain LoD${lodLevel}...`, "info");
 
       // ✅ SỬA: Tham số đầu tiên là URL string, tham số thứ hai là options object
       const terrainProvider = await CesiumTerrainProvider.fromUrl(url, {
         requestVertexNormals: true,
-        requestWaterMask: true
+        requestWaterMask: true,
       });
 
       // ✅ Đợi terrain provider sẵn sàng
@@ -148,50 +151,53 @@ class LODManager {
       this.viewer.scene.globe.depthTestAgainstTerrain = true;
 
       console.log(`✅ Terrain LoD${lodLevel} đã sẵn sàng`);
-      
+
       // Hiển thị thông báo thành công
-      this.showNotification(`✓ Đã tải thành công terrain LoD${lodLevel}`, 'success');
+      this.showNotification(
+        `✓ Đã tải thành công terrain LoD${lodLevel}`,
+        "success",
+      );
 
       return terrainProvider;
     } catch (error) {
       console.error(`❌ Lỗi khi tải terrain LoD${lodLevel}:`, error);
-      
+
       // Hiển thị thông báo lỗi chi tiết
       let errorMessage = `Lỗi khi tải terrain LoD${lodLevel}`;
-      if (error.message.includes('404')) {
-        errorMessage += ': Server không tìm thấy (404)';
-      } else if (error.message.includes('ECONNREFUSED')) {
-        errorMessage += ': Không thể kết nối tới server';
+      if (error.message.includes("404")) {
+        errorMessage += ": Server không tìm thấy (404)";
+      } else if (error.message.includes("ECONNREFUSED")) {
+        errorMessage += ": Không thể kết nối tới server";
       } else {
         errorMessage += `: ${error.message}`;
       }
-      
-      this.showNotification(errorMessage, 'error');
+
+      this.showNotification(errorMessage, "error");
       throw error;
     }
   }
 
   // Cập nhật trạng thái visual của các nút LOD
   updateLODButtonStates(activeLOD) {
-    const lodButtons = ['btnLoD0', 'btnLoD1', 'btnLoD2', 'btnLoD3'];
-    
+    const lodButtons = ["btnLoD0", "btnLoD1", "btnLoD2", "btnLoD3"];
+
     lodButtons.forEach((buttonId, index) => {
       const button = document.getElementById(buttonId);
       if (button) {
         if (index === activeLOD) {
           // Nút đang active
-          button.classList.add('active-lod');
-          button.style.backgroundColor = '#4CAF50'; // Màu xanh lá
-          button.style.color = 'white';
-          button.style.border = '2px solid #2E7D32';
-          button.style.fontWeight = 'bold';
+          button.classList.add("active-lod");
+          button.style.backgroundColor = "#4CAF50"; // Màu xanh lá
+          button.style.color = "white";
+          button.style.border = "2px solid #2E7D32";
+          button.style.fontWeight = "bold";
         } else {
           // Nút không active
-          button.classList.remove('active-lod');
-          button.style.backgroundColor = '#f5f5f5';
-          button.style.color = '#333';
-          button.style.border = '1px solid #ddd';
-          button.style.fontWeight = 'normal';
+          button.classList.remove("active-lod");
+          button.style.backgroundColor = "#f5f5f5";
+          button.style.color = "#333";
+          button.style.border = "1px solid #ddd";
+          button.style.fontWeight = "normal";
         }
       }
     });
@@ -203,7 +209,7 @@ class LODManager {
       level: this.currentLOD,
       url: this.lodUrls[this.currentLOD],
       description: this.getLODDescription(this.currentLOD),
-      isLoading: this.isLoading
+      isLoading: this.isLoading,
     };
   }
 
@@ -213,14 +219,14 @@ class LODManager {
       0: "Cảnh 0 - Mức chi tiết thấp nhất, tối ưu hiệu năng",
       1: "Cảnh 1 - Mức chi tiết thấp, hiển thị nhanh",
       2: "Cảnh 2 - Mức chi tiết trung bình, cân bằng hiệu năng và chất lượng",
-      3: "Cảnh 3 - Mức chi tiết cao, hiển thị đầy đủ chi tiết"
+      3: "Cảnh 3 - Mức chi tiết cao, hiển thị đầy đủ chi tiết",
     };
     return descriptions[lodLevel] || "Không xác định";
   }
 
   // Hiển thị thông báo
-  showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
+  showNotification(message, type = "info") {
+    const notification = document.createElement("div");
     notification.className = `lod-notification lod-notification-${type}`;
     notification.textContent = message;
     notification.style.cssText = `
@@ -228,7 +234,15 @@ class LODManager {
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : type === 'warning' ? '#FF9800' : '#2196F3'};
+      background: ${
+        type === "success"
+          ? "#4CAF50"
+          : type === "error"
+          ? "#f44336"
+          : type === "warning"
+          ? "#FF9800"
+          : "#2196F3"
+      };
       color: white;
       padding: 10px 20px;
       border-radius: 4px;
@@ -239,14 +253,14 @@ class LODManager {
       font-size: 14px;
       font-weight: 500;
     `;
-    
+
     document.body.appendChild(notification);
-    
+
     // Tự động xóa sau 3 giây
     setTimeout(() => {
       if (notification.parentNode) {
-        notification.style.opacity = '0';
-        notification.style.transition = 'opacity 0.3s';
+        notification.style.opacity = "0";
+        notification.style.transition = "opacity 0.3s";
         setTimeout(() => {
           if (notification.parentNode) {
             notification.parentNode.removeChild(notification);
@@ -262,7 +276,7 @@ class LODManager {
 // =========================
 export default {
   name: "MapView",
-  
+
   data() {
     return {
       viewer: null,
@@ -271,7 +285,7 @@ export default {
       // ✅ Thêm 2 module mới
       uploadModelHandler: null,
       uploadI3DM: null,
-      lodManager: null, 
+      lodManager: null,
       // attribute (bảng thuộc tính)
       attrHandler: null,
       attrActive: false,
@@ -322,28 +336,54 @@ export default {
         const response = await fetch("http://localhost:8000/api/models/");
         const models = await response.json();
 
-        const { Model } = await import("cesium");
+        const {
+          Model,
+          HeadingPitchRoll,
+          Math: CesiumMath,
+          Matrix4,
+          Transforms,
+        } = await import("cesium");
 
         for (const item of models) {
           const position = Cartesian3.fromDegrees(
             item.lon,
             item.lat,
-            item.height
+            item.height,
           );
-          const modelMatrix = Transforms.eastNorthUpToFixedFrame(position);
+
+          // ✅ ĐỌC ĐÚNG ROTATION
+          const rotation = item.rotation || {};
+
+          const hpr = new HeadingPitchRoll(
+            CesiumMath.toRadians(rotation.z || 0), // heading
+            CesiumMath.toRadians(rotation.x || 0), // pitch
+            CesiumMath.toRadians(rotation.y || 0), // roll
+          );
+
+          const modelMatrix = Transforms.headingPitchRollToFixedFrame(
+            position,
+            hpr,
+          );
+
+          Matrix4.multiplyByUniformScale(
+            modelMatrix,
+            item.scale || 1,
+            modelMatrix,
+          );
+
           const model = await Model.fromGltfAsync({
             url: item.url,
             modelMatrix: modelMatrix,
-            scale: item.scale,
           });
+
           this.viewer.scene.primitives.add(model);
         }
-        console.log(`Loaded ${models.length} GLB models`);
+
+        console.log(`✅ Loaded ${models.length} GLB models`);
       } catch (err) {
-        console.error("Lỗi load GLB models:", err);
+        console.error("❌ Lỗi load GLB models:", err);
       }
     },
-
     /* =========================
        Khởi tạo Viewer Cesium với chức năng LOD
        ========================= */
@@ -354,7 +394,7 @@ export default {
       // Tạo viewer Cesium
       this.viewer = new Viewer("cesiumContainer", {
         terrainProvider: await CesiumTerrainProvider.fromUrl(
-          "http://localhost:1000/tilesets/tiles"
+          "http://localhost:8006/tilesets/tiles",
         ),
         animation: false,
         timeline: false,
@@ -376,7 +416,7 @@ export default {
       // 1. KHỞI TẠO LOD MANAGER - QUAN TRỌNG: Phải tạo trước khi tải tileset
       this.lodManager = new LODManager(this.viewer);
       console.log("✅ LOD Manager đã khởi tạo");
-      
+
       // 2. TẢI TILESET MẶC ĐỊNH (LoD0) - ĐÃ THAY THẾ loadTileset()
       await this.lodManager.switchToLOD(0);
 
@@ -384,11 +424,15 @@ export default {
       await this.loadGLBModels();
 
       // 4. THIẾT LẬP CÁC NÚT CHỨC NĂNG
-      this.setupMeasureButton();    // Nút đo đạc
-      this.setupLoDButton();        // Nút hiển thị panel LOD
+      this.setupMeasureButton(); // Nút đo đạc
+      this.setupLoDButton(); // Nút hiển thị panel LOD
 
       // 5. KÍCH HOẠT MÔ PHỎNG NƯỚC
       setupWaterControl(this.viewer);
+
+      // 5.5. KÍCH HOẠT MÔ PHỎNG NƯỚC TRÀN (mới)
+      setupWaterFill(this.viewer);
+      console.log("✅ Water Fill Simulation initialized");
 
       // 6. KHỞI TẠO MODEL MANAGER
       this.modelManager = new ModelManager(this.viewer);
@@ -463,9 +507,12 @@ export default {
       btnLoD.addEventListener("click", (e) => {
         e.stopPropagation();
         e.preventDefault();
-        
+
         // Hiển thị hoặc ẩn panel
-        if (panelLoD.style.display === "none" || panelLoD.style.display === "") {
+        if (
+          panelLoD.style.display === "none" ||
+          panelLoD.style.display === ""
+        ) {
           panelLoD.style.display = "flex";
           console.log("Panel LOD đã hiển thị");
         } else {
@@ -486,38 +533,40 @@ export default {
         }
       });
     },
-    
+
     // =========================
     // HIỂN THỊ THÔNG TIN LOD HIỆN TẠI
     // =========================
     showCurrentLODInfo() {
       // Xóa hiển thị cũ nếu có
-      const oldDisplay = document.querySelector('.lod-info-display');
+      const oldDisplay = document.querySelector(".lod-info-display");
       if (oldDisplay) {
         oldDisplay.remove();
       }
-      
+
       // Lấy thông tin LOD hiện tại
       const lodInfo = this.lodManager.getCurrentLODInfo();
-      
+
       // Tạo element hiển thị
-      const display = document.createElement('div');
-      display.className = 'lod-info-display';
+      const display = document.createElement("div");
+      display.className = "lod-info-display";
       display.innerHTML = `
         <h4>📊 THÔNG TIN LOD HIỆN TẠI</h4>
         <p><strong>Cấp độ:</strong> LoD${lodInfo.level}</p>
         <p><strong>Mô tả:</strong> ${lodInfo.description}</p>
         <p><strong>URL:</strong> ${lodInfo.url}</p>
-        <p><strong>Trạng thái:</strong> ${lodInfo.isLoading ? 'Đang tải...' : 'Đã tải ✓'}</p>
+        <p><strong>Trạng thái:</strong> ${
+          lodInfo.isLoading ? "Đang tải..." : "Đã tải ✓"
+        }</p>
       `;
-      
-      document.querySelector('.map-wrapper').appendChild(display);
-      
+
+      document.querySelector(".map-wrapper").appendChild(display);
+
       // Tự động ẩn sau 5 giây
       setTimeout(() => {
         if (display.parentNode) {
-          display.style.opacity = '0';
-          display.style.transition = 'opacity 0.5s';
+          display.style.opacity = "0";
+          display.style.transition = "opacity 0.5s";
           setTimeout(() => {
             if (display.parentNode) {
               display.parentNode.removeChild(display);
@@ -548,32 +597,32 @@ export default {
         this.measureActive = true;
         this.showNotification(
           "Chế độ đo chiều cao đã bật. Click 2 điểm để đo Δh.",
-          "info"
+          "info",
         );
       }
     },
 
     activateHeightMeasure() {
       this.measureHandler = new ScreenSpaceEventHandler(
-        this.viewer.scene.canvas
+        this.viewer.scene.canvas,
       );
 
       // Xử lý click chuột trái
       this.measureHandler.setInputAction(
         (click) => this.handleHeightClick(click),
-        ScreenSpaceEventType.LEFT_CLICK
+        ScreenSpaceEventType.LEFT_CLICK,
       );
 
       // Xử lý di chuyển chuột
       this.measureHandler.setInputAction(
         (movement) => this.handleHeightMouseMove(movement),
-        ScreenSpaceEventType.MOUSE_MOVE
+        ScreenSpaceEventType.MOUSE_MOVE,
       );
 
       // Xử lý click chuột phải để huỷ
       this.measureHandler.setInputAction(
         () => this.cancelCurrentHeightMeasurement(),
-        ScreenSpaceEventType.RIGHT_CLICK
+        ScreenSpaceEventType.RIGHT_CLICK,
       );
     },
 
@@ -748,20 +797,20 @@ export default {
         this.locateActive = true;
         this.showNotification(
           "Chế độ lấy tọa độ đã bật. Click vào bản đồ!",
-          "info"
+          "info",
         );
       }
     },
 
     activateLocatePoint() {
       this.locateHandler = new ScreenSpaceEventHandler(
-        this.viewer.scene.canvas
+        this.viewer.scene.canvas,
       );
 
       // Xử lý click chuột trái
       this.locateHandler.setInputAction(
         (click) => this.handleCoordinateClick(click),
-        ScreenSpaceEventType.LEFT_CLICK
+        ScreenSpaceEventType.LEFT_CLICK,
       );
     },
 
@@ -889,7 +938,7 @@ export default {
               transparent: true,
             },
             tilingScheme: new GeographicTilingScheme(),
-          })
+          }),
         );
         console.log("Basemap WMS bật");
       } else {
@@ -984,8 +1033,8 @@ export default {
       // Tự động xóa sau 3 giây
       setTimeout(() => {
         if (notification.parentNode) {
-          notification.style.opacity = '0';
-          notification.style.transition = 'opacity 0.3s';
+          notification.style.opacity = "0";
+          notification.style.transition = "opacity 0.3s";
           setTimeout(() => {
             if (notification.parentNode) {
               notification.parentNode.removeChild(notification);
@@ -1008,15 +1057,15 @@ export default {
     if (this.measureHandler) this.measureHandler.destroy();
     if (this.locateHandler) this.locateHandler.destroy();
     if (this.attrHandler) this.attrHandler.destroy();
-    
+
     // Dọn dẹp LOD Manager (không cần clearAllTilesets vì chỉ thay đổi terrainProvider)
     this.lodManager = null;
-    
+
     // Dọn dẹp viewer
     if (this.viewer && !this.viewer.isDestroyed()) {
       this.viewer.destroy();
     }
-    
+
     console.log("✅ Đã dọn dẹp tất cả tài nguyên Map.js");
   },
 };
