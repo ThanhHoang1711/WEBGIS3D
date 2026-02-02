@@ -7,83 +7,58 @@
     <!-- Các nút thao tác -->
     <div id="btnContainer">
       <!-- Nút đo đạc -->
-      <button id="btnMeasure" class="btnControl">
+      <button id="btnMeasure" class="btnControl" title="Các phép đo với model">
         <img class="imgControl" :src="require('@/assets/img/measure.png')" />
       </button>
 
       <!-- Nút mực nước biển dâng -->
-      <button id="btnSeaRise" class="btnControl">
+      <button id="btnSeaRise" class="btnControl" title="Mô phỏng mực nước dâng">
         <img class="imgControl" :src="require('@/assets/img/seaLevel.png')" />
       </button>
 
       <!-- Nút quản lý Model -->
-      <button id="btnModel" class="btnControl">
+      <button id="btnModel" class="btnControl" title="Quản lý model">
         <img class="imgControl" :src="require('@/assets/img/model.png')" />
       </button>
 
-<<<<<<< Updated upstream
       <!-- ✅ NÚT THÊM 1 MODEL GLB -->
       <button id="btnUpModel" class="btnControl" title="Thêm 1 Model GLB">
         📦
       </button>
 
       <!-- ✅ NÚT THÊM NHIỀU MODELS (I3DM) -->
-      <button
-        id="btnAddInstances"
-        class="btnControl"
-        title="Thêm Nhiều Models (I3DM)"
-      >
-        🔥
-=======
+      <button id="btnAddInstances" class="btnControl" title="Thêm Nhiều Models (I3DM)"> 
+        🧩
+      </button>
+
       <!-- Nút thay đổi LoD -->
-      <button id="btnLoD" class="btnControl">
+      <button id="btnLoD" class="btnControl" title="Thay đổi cảnh">
         <img class="imgControl" :src="require('@/assets/img/model.png')" />
->>>>>>> Stashed changes
       </button>
     </div>
 
     <!-- Panel hiện nút đo chiều cao và nút lấy tọa độ điểm -->
     <div id="panelMeasure">
       <div class="divMeasure">
-<<<<<<< Updated upstream
-        <button id="btnHeight" @click="toggleHeightMeasure">
-          <img
-            class="imgMeasure"
-            :src="require('@/assets/img/HeightModel.png')"
-          />
-=======
         <button class="btnMeasure" id="btnHeight" @click="toggleHeightMeasure">
           <img class="imgMeasure" :src="require('@/assets/img/HeightModel.png')" />
->>>>>>> Stashed changes
           {{ measureActive ? "Tắt Đo chiều cao" : "Đo chiều cao" }}
         </button>
         <label class="labelMeasure">Đo chiều cao</label>
       </div>
 
       <div class="divMeasure">
-<<<<<<< Updated upstream
-        <button id="btnLocate" @click="toggleLocatePoint">
-          <img
-            class="imgMeasure"
-            :src="require('@/assets/img/LocateModel.jpg')"
-          />
-=======
         <button class="btnMeasure" id="btnLocate" @click="toggleLocatePoint">
-          <img class="imgMeasure" :src="require('@/assets/img/LocateModel.jpg')"/>
->>>>>>> Stashed changes
+          <img
+            class="imgMeasure" :src="require('@/assets/img/LocateModel.jpg')"/>
           {{ locateActive ? "Tắt Lấy tọa độ" : "Lấy tọa độ" }}
         </button>
         <label class="labelMeasure">Lấy tọa độ</label>
       </div>
 
       <div class="divMeasure">
-<<<<<<< Updated upstream
-        <button id="btnStopMeasure" @click="clearAllMeasurements">
-          <img id="imgDelete" :src="require('@/assets/img/DeleteModel.png')" />
-=======
         <button class="btnMeasure" id="btnStopMeasure" @click="clearAllMeasurements">
-          <img id="imgDelete" :src="require('@/assets/img/DeleteModel.png')"/>
->>>>>>> Stashed changes
+          <img id="imgDelete" :src="require('@/assets/img/DeleteModel.png')" />
         </button>
         <label class="labelMeasure">Xóa phép đo</label>
       </div>

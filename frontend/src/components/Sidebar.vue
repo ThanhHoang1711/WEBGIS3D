@@ -53,6 +53,8 @@ export default {
       activeItem: 'maps',
       menuItems: [
         { id: 'maps', title: 'Bản đồ', icon: 'map.png' },
+        { id: 'model-manager', title: 'Quản lý MH', icon: 'dashboard.png' }, // ✅ MỚI
+        { id: 'object-manager', title: 'Quản lý ĐT', icon: 'dashboard.png' },
         { id: 'dashboard', title: 'Dashboard', icon: 'dashboard.png' },
         { id: 'reports', title: 'Báo cáo', icon: 'reports.png' },
         { id: 'settings', title: 'Cài đặt', icon: 'settings.png' }

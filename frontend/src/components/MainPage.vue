@@ -5,7 +5,17 @@
       <MapView />
     </div>
 
-    <!-- ✅ DIV MỚI - HIỆN KHI CHỌN Dashboard/Reports/Settings -->
+    <!-- ✅ MODEL TYPE MANAGER - HIỆN KHI CHỌN "Quản lý Mô hình" -->
+    <div class="map-container" v-else-if="currentView === 'model-manager'">
+      <ModelTypeManager />
+    </div>
+
+    <!-- ✅ MODEL TYPE MANAGER - HIỆN KHI CHỌN "Quản lý Mô hình" -->
+    <div class="content-container full-height" v-else-if="currentView === 'object-manager'">
+      <ObjectManager />
+    </div>
+
+    <!-- ✅ CÁC VIEW KHÁC - Dashboard/Reports/Settings -->
     <div class="content-container" v-else>
       <Dashboard v-if="currentView === 'dashboard'" />
       <Reports v-if="currentView === 'reports'" />
@@ -30,8 +40,10 @@
 <script>
 import MapView from "./MapView.vue";
 import Sidebar from "./Sidebar.vue";
+import ModelTypeManager from "./ModelTypeManager.vue"; // ✅ IMPORT MỚI
+import ObjectManager from "./ObjectManager.vue";
 
-// Import các component mới
+// Import các component cũ
 import Dashboard from "./Dashboard.vue";
 import Reports from "./Reports.vue";
 import Settings from "./Settings.vue";
@@ -41,6 +53,8 @@ export default {
   components: {
     MapView,
     Sidebar,
+    ModelTypeManager, // ✅ ĐĂNG KÝ COMPONENT MỚI
+    ObjectManager,
     Dashboard,
     Reports,
     Settings,
@@ -64,7 +78,7 @@ export default {
       isSidebarCollapsed: false,
       showContentPanel: false,
       selectedMenuItem: null,
-      currentView: "maps", // ✅ THÊM: Quản lý view hiện tại
+      currentView: "maps", // Mặc định hiện bản đồ
     };
   },
   methods: {
@@ -74,14 +88,19 @@ export default {
     handleMenuSelect(menuItem) {
       this.selectedMenuItem = menuItem;
 
-      // ✅ THÊM: Chuyển đổi view dựa trên menu
+      // ✅ Chuyển đổi view dựa trên menu
       this.currentView = menuItem.id;
+
+      // Log để debug
+      console.log(`✅ Switched to view: ${menuItem.id}`);
 
       // Giữ lại logic cũ nếu cần
       switch (menuItem.id) {
         case "maps":
           this.showContentPanel = false;
           break;
+        case "model-manager": // ✅ THÊM CASE MỚI
+        case "object-manager":
         case "dashboard":
         case "reports":
         case "settings":
@@ -113,7 +132,7 @@ export default {
   z-index: 1;
 }
 
-/* ✅ THÊM: Content container cho Dashboard/Reports/Settings */
+/* ✅ Content container cho Dashboard/Reports/Settings */
 .content-container {
   position: absolute;
   top: 0;
@@ -128,9 +147,20 @@ export default {
   transition: padding-left 0.3s ease;
 }
 
+/* ✅ QUAN TRỌNG: Full height cho Model Manager (không có padding) */
+.content-container.full-height {
+  padding: 0;
+  padding-left: 200px; /* Chỉ có sidebar space */
+  overflow: hidden; /* Không scroll vì ModelManager tự quản lý */
+}
+
 /* Khi sidebar collapsed */
 .sidebar-overlay.collapsed ~ .content-container {
   padding-left: 100px; /* 60px sidebar + 40px margin */
+}
+
+.sidebar-overlay.collapsed ~ .content-container.full-height {
+  padding-left: 60px; /* Chỉ có sidebar space */
 }
 
 /* Sidebar đè lên map - GIỮ NGUYÊN */
@@ -217,6 +247,10 @@ export default {
   .content-container {
     padding: 20px;
     padding-left: 20px;
+  }
+  
+  .content-container.full-height {
+    padding-left: 0;
   }
 }
 </style>
