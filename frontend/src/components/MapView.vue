@@ -174,6 +174,7 @@ import "./css/MapView.css";
 import "./css/ModelManager.css";
 import "./css/UploadI3DM.css";
 import "./css/UpLoadModel.css";
+import "./css/StyleTool.css";
 import MapLogic from "./js/Map.js";
 export default MapLogic;
 </script>
