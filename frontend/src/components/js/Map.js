@@ -8,12 +8,6 @@ import {
   Transforms,
   CesiumTerrainProvider,
   Cesium3DTileset,
-  ScreenSpaceEventHandler,
-  ScreenSpaceEventType,
-  Cartographic,
-  Color,
-  Cartesian2,
-  defined,
   WebMapServiceImageryProvider,
   GeographicTilingScheme,
   Model,
@@ -22,9 +16,12 @@ import {
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { setupWaterControl } from "./WaterControl";
 import { ModelManager } from "./ModelManager";
-// ✅ Import 2 module mới
 import { UploadModelHandler } from "./UpLoadModel";
 import { UploadI3DM } from "./UploadI3DM";
+import { setupWaterFill } from "./WaterFill";
+import NavigationControl from "./Tool/XoayBanDo.js";
+import { MeasurementSystem } from "./Tool/DoDac";
+import { CoordinateSystem } from "./Tool/ToaDo.js";
 
 // =========================
 // LỚP QUẢN LÝ LOD (LEVEL OF DETAIL) - TẢI HOÀN TOÀN TỪ BACKEND
@@ -72,7 +69,6 @@ class LODManager {
     }
   }
 
-  // Thiết lập sự kiện click cho các nút LOD trong panel
   setupLODButtons() {
     // Tạo mapping động dựa trên danh sách cảnh
     this.scenes.forEach(scene => {
@@ -169,7 +165,7 @@ class LODManager {
 
       const terrainProvider = await CesiumTerrainProvider.fromUrl(scene.url_terrain, {
         requestVertexNormals: true,
-        requestWaterMask: true
+        requestWaterMask: true,
       });
 
       if (terrainProvider.readyPromise) {
@@ -345,7 +341,6 @@ class LODManager {
     }
   }
 
-  // Cập nhật trạng thái visual của các nút LOD
   updateLODButtonStates(activeLOD) {
     this.scenes.forEach(scene => {
       const buttonId = `btnLoD${scene.ma_canh}`;
@@ -360,12 +355,11 @@ class LODManager {
           button.style.border = '2px solid #2E7D32';
           button.style.fontWeight = 'bold';
         } else {
-          // Nút không active
-          button.classList.remove('active-lod');
-          button.style.backgroundColor = '#f5f5f5';
-          button.style.color = '#333';
-          button.style.border = '1px solid #ddd';
-          button.style.fontWeight = 'normal';
+          button.classList.remove("active-lod");
+          button.style.backgroundColor = "#f5f5f5";
+          button.style.color = "#333";
+          button.style.border = "1px solid #ddd";
+          button.style.fontWeight = "normal";
         }
       }
     });
@@ -396,7 +390,15 @@ class LODManager {
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : type === 'warning' ? '#FF9800' : '#2196F3'};
+      background: ${
+        type === "success"
+          ? "#4CAF50"
+          : type === "error"
+          ? "#f44336"
+          : type === "warning"
+          ? "#FF9800"
+          : "#2196F3"
+      };
       color: white;
       padding: 10px 20px;
       border-radius: 4px;
@@ -407,13 +409,13 @@ class LODManager {
       font-size: 14px;
       font-weight: 500;
     `;
-    
+
     document.body.appendChild(notification);
     
     setTimeout(() => {
       if (notification.parentNode) {
-        notification.style.opacity = '0';
-        notification.style.transition = 'opacity 0.3s';
+        notification.style.opacity = "0";
+        notification.style.transition = "opacity 0.3s";
         setTimeout(() => {
           if (notification.parentNode) {
             notification.parentNode.removeChild(notification);
@@ -429,7 +431,7 @@ class LODManager {
 // =========================
 export default {
   name: "MapView",
-  
+
   data() {
     return {
       viewer: null,
@@ -447,21 +449,7 @@ export default {
       attrActive: false,
       attrVisible: false,
       attrContent: "",
-
-      // viewshed
       viewshedActive: false,
-
-      // Measurement properties
-      measureActive: false,
-      locateActive: false,
-      measureHandler: null,
-      locateHandler: null,
-      firstMeasurePoint: null,
-      dynamicMeasureLine: null,
-      measurePoints: [],
-      measureLines: [],
-      measureLabels: [],
-      coordMarkers: [],
     };
   },
 
@@ -681,8 +669,8 @@ export default {
       
       setTimeout(() => {
         if (display.parentNode) {
-          display.style.opacity = '0';
-          display.style.transition = 'opacity 0.5s';
+          display.style.opacity = "0";
+          display.style.transition = "opacity 0.5s";
           setTimeout(() => {
             if (display.parentNode) {
               display.parentNode.removeChild(display);
@@ -692,9 +680,7 @@ export default {
       }, 5000);
     },
 
-    /* =========================
-       Đo chiều cao
-       ========================= */
+    // ✅ PHƯƠNG THỨC ĐO CHIỀU CAO (gọi từ template)
     toggleHeightMeasure() {
       if (this.locateActive) {
         this.deactivateLocatePoint();
@@ -1001,12 +987,9 @@ export default {
         panelMeasure.style.display = "none";
       }
 
-      this.showNotification("Đã xóa tất cả các phép đo", "success");
+      this.showNotification("Đã xóa tất cả các phép đo và marker", "success");
     },
 
-    /* =========================
-       Toggle Basemap WMS
-       ========================= */
     toggleBasemap() {
       if (!this.viewer) return alert("Viewer chưa sẵn sàng!");
       if (!this.basemapLayer) {
@@ -1022,7 +1005,7 @@ export default {
               transparent: true,
             },
             tilingScheme: new GeographicTilingScheme(),
-          })
+          }),
         );
         console.log("Basemap WMS bật");
       } else {
@@ -1031,9 +1014,6 @@ export default {
       }
     },
 
-    /* =========================
-       Xem thuộc tính feature
-       ========================= */
     toggleAttr() {
       if (!this.viewer) return alert("Viewer chưa sẵn sàng!");
       if (this.attrHandler) {
@@ -1069,18 +1049,12 @@ export default {
       }, ScreenSpaceEventType.LEFT_CLICK);
     },
 
-    /* =========================
-       Viewshed
-       ========================= */
     toggleViewshed() {
       this.viewshedActive = !this.viewshedActive;
       if (this.viewshedActive) alert("Chế độ Viewshed bật!");
       else alert("Viewshed đã tắt!");
     },
 
-    /* =========================
-       Tiện ích chung
-       ========================= */
     showNotification(message, type = "info") {
       console.log(`${type.toUpperCase()}: ${message}`);
 
@@ -1114,8 +1088,8 @@ export default {
 
       setTimeout(() => {
         if (notification.parentNode) {
-          notification.style.opacity = '0';
-          notification.style.transition = 'opacity 0.3s';
+          notification.style.opacity = "0";
+          notification.style.transition = "opacity 0.3s";
           setTimeout(() => {
             if (notification.parentNode) {
               notification.parentNode.removeChild(notification);
@@ -1143,7 +1117,7 @@ export default {
     if (this.viewer && !this.viewer.isDestroyed()) {
       this.viewer.destroy();
     }
-    
+
     console.log("✅ Đã dọn dẹp tất cả tài nguyên Map.js");
   },
 };

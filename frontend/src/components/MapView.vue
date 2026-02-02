@@ -16,6 +16,15 @@
         <img class="imgControl" :src="require('@/assets/img/seaLevel.png')" />
       </button>
 
+      <!-- ✅ NÚT MÔ PHỎNG NƯỚC TRÀN THEO ĐỊA HÌNH -->
+      <button
+        id="btnWaterFill"
+        class="btnControl"
+        title="Mô phỏng nước tràn theo địa hình"
+      >
+        💧
+      </button>
+
       <!-- Nút quản lý Model -->
       <button id="btnModel" class="btnControl" title="Quản lý model">
         <img class="imgControl" :src="require('@/assets/img/model.png')" />
@@ -27,7 +36,11 @@
       </button>
 
       <!-- ✅ NÚT THÊM NHIỀU MODELS (I3DM) -->
-      <button id="btnAddInstances" class="btnControl" title="Thêm Nhiều Models (I3DM)"> 
+      <button
+        id="btnAddInstances"
+        class="btnControl"
+        title="Thêm Nhiều Models (I3DM)"
+      >
         🧩
       </button>
 
@@ -41,7 +54,10 @@
     <div id="panelMeasure">
       <div class="divMeasure">
         <button class="btnMeasure" id="btnHeight" @click="toggleHeightMeasure">
-          <img class="imgMeasure" :src="require('@/assets/img/HeightModel.png')" />
+          <img
+            class="imgMeasure"
+            :src="require('@/assets/img/HeightModel.png')"
+          />
           {{ measureActive ? "Tắt Đo chiều cao" : "Đo chiều cao" }}
         </button>
         <label class="labelMeasure">Đo chiều cao</label>
@@ -50,14 +66,20 @@
       <div class="divMeasure">
         <button class="btnMeasure" id="btnLocate" @click="toggleLocatePoint">
           <img
-            class="imgMeasure" :src="require('@/assets/img/LocateModel.jpg')"/>
+            class="imgMeasure"
+            :src="require('@/assets/img/LocateModel.jpg')"
+          />
           {{ locateActive ? "Tắt Lấy tọa độ" : "Lấy tọa độ" }}
         </button>
         <label class="labelMeasure">Lấy tọa độ</label>
       </div>
 
       <div class="divMeasure">
-        <button class="btnMeasure" id="btnStopMeasure" @click="clearAllMeasurements">
+        <button
+          class="btnMeasure"
+          id="btnStopMeasure"
+          @click="clearAllMeasurements"
+        >
           <img id="imgDelete" :src="require('@/assets/img/DeleteModel.png')" />
         </button>
         <label class="labelMeasure">Xóa phép đo</label>
@@ -75,28 +97,42 @@
 
       <div class="divMeasure">
         <button class="btnMeasure" id="btnLoD1">
-          <img class="imgMeasure" :src="require('@/assets/img/LocateModel.jpg')"/>
+          <img
+            class="imgMeasure"
+            :src="require('@/assets/img/LocateModel.jpg')"
+          />
         </button>
         <label class="labelMeasure">Cảnh 1</label>
       </div>
 
       <div class="divMeasure">
         <button class="btnMeasure" id="btnLoD2">
-          <img class="imgMeasure" id="imgDelete" :src="require('@/assets/img/DeleteModel.png')"/>
+          <img
+            class="imgMeasure"
+            id="imgDelete"
+            :src="require('@/assets/img/DeleteModel.png')"
+          />
         </button>
         <label class="labelMeasure">Cảnh 2</label>
       </div>
 
       <div class="divMeasure">
         <button class="btnMeasure" id="btnLoD3">
-          <img class="imgMeasure" id="imgDelete" :src="require('@/assets/img/DeleteModel.png')"/>
+          <img
+            class="imgMeasure"
+            id="imgDelete"
+            :src="require('@/assets/img/DeleteModel.png')"
+          />
         </button>
         <label class="labelMeasure">Cảnh 3</label>
       </div>
 
       <div class="divMeasure">
         <button class="btnMeasure" id="btnLoD4" @click="switchToLoD(4)">
-          <img class="imgMeasure" :src="require('@/assets/img/DeleteModel.png')"/>
+          <img
+            class="imgMeasure"
+            :src="require('@/assets/img/DeleteModel.png')"
+          />
         </button>
         <label class="labelMeasure">Cảnh 4</label>
       </div>
@@ -138,6 +174,7 @@ import "./css/MapView.css";
 import "./css/ModelManager.css";
 import "./css/UploadI3DM.css";
 import "./css/UpLoadModel.css";
+import "./css/StyleTool.css";
 import MapLogic from "./js/Map.js";
 export default MapLogic;
 </script>

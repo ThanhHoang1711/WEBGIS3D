@@ -1,3 +1,5 @@
+/* assets/components/css/MapView.css */
+
 .map-container {
   position: relative;
   width: 100%;
@@ -10,12 +12,24 @@
 }
 
 html,
-body,
-#cesiumContainer {
+body {
   height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
+  overflow: hidden; /* Tránh scrollbar không mong muốn */
+}
+
+.map-wrapper {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+#cesiumContainer,
+.cesium-container {
+  width: 100%;
+  height: 100%;
 }
 
 button {
@@ -28,7 +42,8 @@ button {
   top: 45px;
   right: 10px;
   z-index: 1;
-  height: 185px;
+
+  height: 200px;
   width: 30px;
   border-radius: 10px;
   background-color: white;
@@ -95,194 +110,13 @@ button {
 
 /* Trong panel LoD, nút nào active thì có class 'active' */
 .btnMeasure.active {
-  border: 3px solid #4CAF50 !important;
+  border: 3px solid #4caf50 !important;
   background: #f8f9fa !important;
 }
 
 /* Các nút khác - bình thường */
 .btnMeasure:not(.active) {
   border: 2px solid transparent !important;
-}
-
-/************************************************************* Panel đo model */
-#panelMeasure {
-  position: absolute;
-  top: 45px;
-  right: 50px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  padding: 15px;
-  z-index: 1;
-  display: none; /* Mặc định ẩn */
-  backdrop-filter: blur(10px);
-}
-
-/* Khi panel hiển thị */
-#panelMeasure[style*="display: block"],
-#panelMeasure.show {
-  display: block;
-  animation: fadeIn 0.3s ease;
-}
-
-/************************************************************* Nội dung panel đo */
-.divMeasure {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-/* Các nút bấm - Thiết kế theo mẫu Standard/Hybrid/Satellite */
-.btnMeasure {
-  width: 100%;
-  padding: 14px 16px;
-  border: 2px solid transparent;
-  border-radius: 8px;
-  background: #f8f9fa;
-  color: #333;
-  font-size: 0px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-align: center;
-  display: block;
-  position: relative;
-  overflow: hidden;
-  height: 50px;
-  width: 80px;
-}
-
-#btnLoD0,
-#btnLoD1, 
-#btnLoD2,
-#btnHeight,
-#btnLocate {
-  margin-right: 10px;
-}
-
-/* Hiệu ứng hover giống mẫu */
-.btnMeasure:hover {
-  background: #e9ecef;
-  border-color: #dee2e6;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Khi nút đang active */
-.btnMeasure.active {
-  background: linear-gradient(135deg, #4caf50, #45a049);
-  color: white;
-  border-color: #3d8b40;
-  box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
-}
-
-/* Hiệu ứng ripple cho nút */
-.btnMeasure::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 5px;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.5);
-  opacity: 0;
-  border-radius: 100%;
-  transform: scale(1, 1) translate(-50%);
-  transform-origin: 50% 50%;
-}
-
-.btnMeasure:focus:not(:active)::after {
-  animation: ripple 1s ease-out;
-}
-
-/* Animation */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes ripple {
-  0% {
-    transform: scale(0, 0);
-    opacity: 0.5;
-  }
-  20% {
-    transform: scale(25, 25);
-    opacity: 0.3;
-  }
-  100% {
-    opacity: 0;
-    transform: scale(40, 40);
-  }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  #panelMeasure {
-    top: 70px;
-    left: 10px;
-    right: 10px;
-    min-width: auto;
-  }
-
-  .btnMeasure {
-    padding: 12px 14px;
-    font-size: 13px;
-  }
-}
-
-/* Trạng thái disabled */
-.btnMeasure:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none !important;
-}
-
-.btnMeasure:disabled:hover {
-  background: #f8f9fa;
-  border-color: transparent;
-  box-shadow: none;
-}
-
-/* Ảnh trong button */
-.imgMeasure {
-  width: 80px; /* Kích thước ảnh */
-  height: 50px;
-  object-fit: contain;
-  display: block;
-  position: absolute; /* Đặt ảnh ở giữa */
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-#imgDelete {
-  width: 80px; /* Kích thước ảnh */
-  height: 40px;
-  object-fit: contain;
-  display: block;
-  position: absolute; /* Đặt ảnh ở giữa */
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-/* Nhãn bên dưới nút */
-.labelMeasure {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  font-size: 12px;
-  color: #495057;
-  text-align: center;
-  margin-top: 4px;
-  font-weight: 500;
-  width: 100%;
-  text-align: center;
-  line-height: 1.3;
 }
 
 /************************************************************* Nút Base Map */
