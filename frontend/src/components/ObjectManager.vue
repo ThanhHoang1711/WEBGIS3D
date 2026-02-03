@@ -2,11 +2,10 @@
   <div class="object-manager">
     <!-- PANEL CHÍNH -->
     <div class="main-panel">
-      
       <!-- HEADER -->
       <div class="panel-header">
         <h2>🗺️ Quản Lý Đối Tượng Trên Bản Đồ</h2>
-        
+
         <div class="action-buttons">
           <button @click="showAddForm" class="btn btn-primary">
             ➕ Thêm Đối Tượng
@@ -19,14 +18,26 @@
 
       <!-- SEARCH & FILTER -->
       <div class="filter-section">
-        <select v-model="filterCanh" @change="handleFilterChange" class="filter-select">
+        <select
+          v-model="filterCanh"
+          @change="handleFilterChange"
+          class="filter-select"
+        >
           <option value="">Tất cả cảnh</option>
-          <option v-for="canh in canhList" :key="canh.ma_canh" :value="canh.ma_canh">
+          <option
+            v-for="canh in canhList"
+            :key="canh.ma_canh"
+            :value="canh.ma_canh"
+          >
             {{ canh.ten_canh }}
           </option>
         </select>
-        
-        <select v-model="filterLoaiDoiTuong" @change="handleFilterChange" class="filter-select">
+
+        <select
+          v-model="filterLoaiDoiTuong"
+          @change="handleFilterChange"
+          class="filter-select"
+        >
           <option value="">Tất cả loại đối tượng</option>
           <option value="1">Đối tượng chuyển động</option>
           <option value="2">Cây</option>
@@ -62,14 +73,22 @@
               <td>{{ item.loai_mo_hinh }}</td>
               <td class="position-cell">{{ item.vi_tri }}</td>
               <td>{{ item.loai_doi_tuong_text }}</td>
-              <td>{{ item.loai_dt_info || '-' }}</td>
+              <td>{{ item.loai_dt_info || "-" }}</td>
               <td>
-                <span :class="['status-badge', item.trang_thai === 1 ? 'status-active' : 'status-inactive']">
-                  {{ item.trang_thai === 1 ? 'Hoạt động' : 'Ngưng' }}
+                <span
+                  :class="[
+                    'status-badge',
+                    item.trang_thai === 1 ? 'status-active' : 'status-inactive',
+                  ]"
+                >
+                  {{ item.trang_thai === 1 ? "Hoạt động" : "Ngưng" }}
                 </span>
               </td>
               <td class="action-cell">
-                <button @click="confirmDelete(item)" class="btn-action btn-delete">
+                <button
+                  @click="confirmDelete(item)"
+                  class="btn-action btn-delete"
+                >
                   🗑️ Xóa
                 </button>
               </td>
@@ -80,20 +99,20 @@
 
       <!-- PAGINATION -->
       <div class="pagination" v-if="pagination.total_pages > 1">
-        <button 
+        <button
           @click="goToPage(pagination.page - 1)"
           :disabled="!pagination.has_previous"
           class="btn-page"
         >
           ◀ Trước
         </button>
-        
+
         <span class="page-info">
-          Trang {{ pagination.page }} / {{ pagination.total_pages }}
-          (Tổng: {{ pagination.total_items }} mục)
+          Trang {{ pagination.page }} / {{ pagination.total_pages }} (Tổng:
+          {{ pagination.total_items }} mục)
         </span>
-        
-        <button 
+
+        <button
           @click="goToPage(pagination.page + 1)"
           :disabled="!pagination.has_next"
           class="btn-page"
@@ -115,13 +134,17 @@
           <!-- BƯỚC 1: THÔNG TIN CƠ BẢN -->
           <div class="form-section">
             <h4>📌 Thông Tin Cơ Bản</h4>
-            
+
             <!-- Chọn Cảnh -->
             <div class="form-group">
               <label>Cảnh <span class="required">*</span></label>
               <select v-model="formData.ma_canh_id" class="form-select">
                 <option value="">-- Chọn cảnh --</option>
-                <option v-for="canh in canhList" :key="canh.ma_canh" :value="canh.ma_canh">
+                <option
+                  v-for="canh in canhList"
+                  :key="canh.ma_canh"
+                  :value="canh.ma_canh"
+                >
                   {{ canh.ten_canh }}
                 </option>
               </select>
@@ -131,13 +154,23 @@
             <div class="form-group">
               <label>Loại Mô Hình</label>
               <div class="input-with-button">
-                <select v-model="formData.ma_loai_mo_hinh_id" class="form-select">
+                <select
+                  v-model="formData.ma_loai_mo_hinh_id"
+                  class="form-select"
+                >
                   <option value="">-- Chọn loại mô hình --</option>
-                  <option v-for="lmh in loaiMoHinhList" :key="lmh.value" :value="lmh.value">
+                  <option
+                    v-for="lmh in loaiMoHinhList"
+                    :key="lmh.value"
+                    :value="lmh.value"
+                  >
                     {{ lmh.label }}
                   </option>
                 </select>
-                <button @click="showUploadModelDialog" class="btn btn-secondary btn-small">
+                <button
+                  @click="showUploadModelDialog"
+                  class="btn btn-secondary btn-small"
+                >
                   📤 Upload Model
                 </button>
               </div>
@@ -146,7 +179,11 @@
             <!-- Loại Đối Tượng -->
             <div class="form-group">
               <label>Loại Đối Tượng <span class="required">*</span></label>
-              <select v-model="formData.loai_doi_tuong" @change="handleLoaiDoiTuongChange" class="form-select">
+              <select
+                v-model="formData.loai_doi_tuong"
+                @change="handleLoaiDoiTuongChange"
+                class="form-select"
+              >
                 <option value="">-- Chọn loại --</option>
                 <option value="1">Đối tượng chuyển động</option>
                 <option value="2">Cây</option>
@@ -167,31 +204,39 @@
           <!-- BƯỚC 2: VỊ TRÍ -->
           <div class="form-section">
             <h4>📍 Thông Tin Vị Trí</h4>
-            
+
             <div class="position-picker">
-              <button @click="pickPositionOnMap" class="btn btn-primary btn-block">
+              <button
+                @click="pickPositionOnMap"
+                class="btn btn-primary btn-block"
+              >
                 🗺️ Chọn Vị Trí Trên Bản Đồ
               </button>
-              <p class="help-text">Click vào nút trên, sau đó double-click vào vị trí trên bản đồ để chọn tọa độ</p>
+              <p class="help-text">
+                Click vào nút trên, sau đó double-click vào vị trí trên bản đồ
+                để chọn tọa độ
+              </p>
             </div>
 
             <div class="form-row">
               <div class="form-group">
                 <label>Latitude (Vĩ độ) <span class="required">*</span></label>
-                <input 
-                  v-model="formData.lat" 
-                  type="number" 
+                <input
+                  v-model="formData.lat"
+                  type="number"
                   step="0.000001"
                   placeholder="21.028511"
                   class="form-input"
                 />
               </div>
-              
+
               <div class="form-group">
-                <label>Longitude (Kinh độ) <span class="required">*</span></label>
-                <input 
-                  v-model="formData.lon" 
-                  type="number" 
+                <label
+                  >Longitude (Kinh độ) <span class="required">*</span></label
+                >
+                <input
+                  v-model="formData.lon"
+                  type="number"
                   step="0.000001"
                   placeholder="105.804817"
                   class="form-input"
@@ -202,20 +247,20 @@
             <div class="form-row">
               <div class="form-group">
                 <label>Height (Độ cao - m)</label>
-                <input 
-                  v-model="formData.height" 
-                  type="number" 
+                <input
+                  v-model="formData.height"
+                  type="number"
                   step="0.1"
                   placeholder="0"
                   class="form-input"
                 />
               </div>
-              
+
               <div class="form-group">
                 <label>Scale (Tỷ lệ)</label>
-                <input 
-                  v-model="formData.scale" 
-                  type="number" 
+                <input
+                  v-model="formData.scale"
+                  type="number"
                   step="0.1"
                   placeholder="1.0"
                   class="form-input"
@@ -226,17 +271,32 @@
             <div class="form-row">
               <div class="form-group">
                 <label>Heading (độ)</label>
-                <input v-model="formData.heading" type="number" step="0.1" class="form-input" />
+                <input
+                  v-model="formData.heading"
+                  type="number"
+                  step="0.1"
+                  class="form-input"
+                />
               </div>
-              
+
               <div class="form-group">
                 <label>Pitch (độ)</label>
-                <input v-model="formData.pitch" type="number" step="0.1" class="form-input" />
+                <input
+                  v-model="formData.pitch"
+                  type="number"
+                  step="0.1"
+                  class="form-input"
+                />
               </div>
-              
+
               <div class="form-group">
                 <label>Roll (độ)</label>
-                <input v-model="formData.roll" type="number" step="0.1" class="form-input" />
+                <input
+                  v-model="formData.roll"
+                  type="number"
+                  step="0.1"
+                  class="form-input"
+                />
               </div>
             </div>
           </div>
@@ -244,11 +304,11 @@
           <!-- BƯỚC 3: HÌNH ẢNH -->
           <div class="form-section">
             <h4>🖼️ Hình Ảnh</h4>
-            
+
             <div class="file-upload-container">
-              <input 
+              <input
                 ref="imageFileInput"
-                type="file" 
+                type="file"
                 accept="image/*"
                 @change="handleImageSelect"
                 class="file-input"
@@ -257,12 +317,12 @@
               <label for="imageFileInput" class="file-label">
                 <span class="file-icon">📁</span>
                 <span class="file-text">
-                  {{ formData.hinh_anh_name || 'Chọn hình ảnh...' }}
+                  {{ formData.hinh_anh_name || "Chọn hình ảnh..." }}
                 </span>
               </label>
-              <button 
-                v-if="formData.hinh_anh_file" 
-                @click="clearImage" 
+              <button
+                v-if="formData.hinh_anh_file"
+                @click="clearImage"
                 class="btn-clear-file"
                 type="button"
               >
@@ -274,7 +334,7 @@
           <!-- BƯỚC 4: THÔNG TIN ĐỐI TƯỢNG CỤ THỂ -->
           <div class="form-section" v-if="formData.loai_doi_tuong">
             <h4>📝 Thông Tin Chi Tiết</h4>
-            
+
             <!-- FORM ĐỐI TƯỢNG CHUYỂN ĐỘNG -->
             <div v-if="formData.loai_doi_tuong === '1'">
               <div class="form-group">
@@ -286,32 +346,32 @@
                   <option value="UAV">UAV</option>
                 </select>
               </div>
-              
+
               <div class="form-group">
                 <label>Tên Đối Tượng <span class="required">*</span></label>
-                <input 
-                  v-model="formData.ten_doi_tuong" 
-                  type="text" 
+                <input
+                  v-model="formData.ten_doi_tuong"
+                  type="text"
                   placeholder="VD: Tàu 123"
                   class="form-input"
                 />
               </div>
-              
+
               <div class="form-group">
                 <label>Đường Chuyển Động</label>
-                <textarea 
-                  v-model="formData.duong_chuyen_dong" 
+                <textarea
+                  v-model="formData.duong_chuyen_dong"
                   rows="3"
                   placeholder="Nhập GeoJSON hoặc polyline..."
                   class="form-textarea"
                 ></textarea>
               </div>
-              
+
               <div class="form-group">
                 <label>Vận Tốc (m/s)</label>
-                <input 
-                  v-model="formData.van_toc" 
-                  type="number" 
+                <input
+                  v-model="formData.van_toc"
+                  type="number"
                   step="0.1"
                   placeholder="10.5"
                   class="form-input"
@@ -323,42 +383,42 @@
             <div v-if="formData.loai_doi_tuong === '2'">
               <div class="form-group">
                 <label>Tên Loài Cây <span class="required">*</span></label>
-                <input 
-                  v-model="formData.ten_loai" 
-                  type="text" 
+                <input
+                  v-model="formData.ten_loai"
+                  type="text"
                   placeholder="VD: Phượng vĩ"
                   class="form-input"
                 />
               </div>
-              
+
               <div class="form-row">
                 <div class="form-group">
                   <label>Chiều Cao (m)</label>
-                  <input 
-                    v-model="formData.cay_height" 
-                    type="number" 
+                  <input
+                    v-model="formData.cay_height"
+                    type="number"
                     step="0.1"
                     placeholder="5.5"
                     class="form-input"
                   />
                 </div>
-                
+
                 <div class="form-group">
                   <label>Đường Kính Thân (cm)</label>
-                  <input 
-                    v-model="formData.duong_kinh" 
-                    type="number" 
+                  <input
+                    v-model="formData.duong_kinh"
+                    type="number"
                     step="0.1"
                     placeholder="30"
                     class="form-input"
                   />
                 </div>
               </div>
-              
+
               <div class="form-group">
                 <label>Tuổi Cây (năm)</label>
-                <input 
-                  v-model="formData.tuoi" 
+                <input
+                  v-model="formData.tuoi"
                   type="number"
                   placeholder="10"
                   class="form-input"
@@ -370,14 +430,14 @@
             <div v-if="formData.loai_doi_tuong === '3'">
               <div class="form-group">
                 <label>Tên Công Trình <span class="required">*</span></label>
-                <input 
-                  v-model="formData.ten_cong_trinh" 
-                  type="text" 
+                <input
+                  v-model="formData.ten_cong_trinh"
+                  type="text"
                   placeholder="VD: Nhà văn hóa xã"
                   class="form-input"
                 />
               </div>
-              
+
               <div class="form-group">
                 <label>Loại Công Trình</label>
                 <select v-model="formData.loai_cong_trinh" class="form-select">
@@ -387,7 +447,7 @@
                   <option value="TRAM">Trạm</option>
                 </select>
               </div>
-              
+
               <div class="form-group">
                 <label>Cấp Bảo Mật</label>
                 <select v-model="formData.cap_bao_mat" class="form-select">
@@ -401,18 +461,23 @@
         </div>
 
         <div class="dialog-footer">
-          <button @click="closeForm" class="btn btn-secondary">
-            Hủy
-          </button>
-          <button @click="handleSubmit" class="btn btn-primary" :disabled="submitting">
-            {{ submitting ? '⏳ Đang xử lý...' : '➕ Tạo Đối Tượng' }}
+          <button @click="closeForm" class="btn btn-secondary">Hủy</button>
+          <button
+            @click="handleSubmit"
+            class="btn btn-primary"
+            :disabled="submitting"
+          >
+            {{ submitting ? "⏳ Đang xử lý..." : "➕ Tạo Đối Tượng" }}
           </button>
         </div>
       </div>
     </div>
 
     <!-- NOTIFICATION -->
-    <div v-if="notification.show" :class="['notification', `notification-${notification.type}`]">
+    <div
+      v-if="notification.show"
+      :class="['notification', `notification-${notification.type}`]"
+    >
       {{ notification.message }}
     </div>
   </div>
@@ -420,17 +485,17 @@
 
 <script>
 export default {
-  name: 'ObjectManager',
-  
+  name: "ObjectManager",
+
   data() {
     return {
-      backendUrl: 'http://localhost:8000',
-      
+      backendUrl: "http://localhost:8000",
+
       // Data lists
       doiTuongList: [],
       canhList: [],
       loaiMoHinhList: [],
-      
+
       // Pagination
       pagination: {
         page: 1,
@@ -438,185 +503,186 @@ export default {
         total_pages: 1,
         total_items: 0,
         has_next: false,
-        has_previous: false
+        has_previous: false,
       },
-      
+
       // Filters
-      filterCanh: '',
-      filterLoaiDoiTuong: '',
-      
+      filterCanh: "",
+      filterLoaiDoiTuong: "",
+
       // Loading states
       loading: false,
       submitting: false,
-      
+
       // Form
       showForm: false,
       formData: this.getEmptyFormData(),
-      
+
       // Notification
       notification: {
         show: false,
-        message: '',
-        type: 'info'
-      }
+        message: "",
+        type: "info",
+      },
     };
   },
-  
+
   mounted() {
     this.loadCanhList();
     this.loadLoaiMoHinhOptions();
     this.loadData();
   },
-  
+
   methods: {
     getEmptyFormData() {
       return {
         // Thông tin cơ bản
-        ma_canh_id: '',
-        ma_loai_mo_hinh_id: '',
-        loai_doi_tuong: '',
+        ma_canh_id: "",
+        ma_loai_mo_hinh_id: "",
+        loai_doi_tuong: "",
         trang_thai: 1,
-        
+
         // Vị trí
-        lat: '',
-        lon: '',
+        lat: "",
+        lon: "",
         height: 0,
         heading: 0,
         pitch: 0,
         roll: 0,
         scale: 1.0,
-        
+
         // Hình ảnh
         hinh_anh_file: null,
-        hinh_anh_name: '',
-        
+        hinh_anh_name: "",
+
         // Đối tượng chuyển động
-        loai_DT: 'TAU',
-        ten_doi_tuong: '',
-        duong_chuyen_dong: '',
-        van_toc: '',
-        
+        loai_DT: "TAU",
+        ten_doi_tuong: "",
+        duong_chuyen_dong: "",
+        van_toc: "",
+
         // Cây
-        ten_loai: '',
-        cay_height: '',
-        duong_kinh: '',
-        tuoi: '',
-        
+        ten_loai: "",
+        cay_height: "",
+        duong_kinh: "",
+        tuoi: "",
+
         // Công trình
-        ten_cong_trinh: '',
-        loai_cong_trinh: 'NHA',
-        cap_bao_mat: 0
+        ten_cong_trinh: "",
+        loai_cong_trinh: "NHA",
+        cap_bao_mat: 0,
       };
     },
-    
+
     // ============ DATA LOADING ============
     async loadData() {
       this.loading = true;
       try {
         const params = new URLSearchParams({
           page: this.pagination.page,
-          page_size: this.pagination.page_size
+          page_size: this.pagination.page_size,
         });
-        
+
         if (this.filterCanh) {
-          params.append('ma_canh', this.filterCanh);
+          params.append("ma_canh", this.filterCanh);
         }
-        
+
         if (this.filterLoaiDoiTuong) {
-          params.append('loai_doi_tuong', this.filterLoaiDoiTuong);
+          params.append("loai_doi_tuong", this.filterLoaiDoiTuong);
         }
-        
+
         const response = await fetch(
-          `${this.backendUrl}/QLModel/api/doi-tuong/?${params.toString()}`
+          `${this.backendUrl}/QLModel/api/doi-tuong/?${params.toString()}`,
         );
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
           this.doiTuongList = data.data;
           this.pagination = data.pagination;
         } else {
-          throw new Error(data.error || 'Lỗi khi tải dữ liệu');
+          throw new Error(data.error || "Lỗi khi tải dữ liệu");
         }
-        
       } catch (error) {
-        console.error('❌ Error loading data:', error);
-        this.showNotification('Lỗi tải dữ liệu: ' + error.message, 'error');
+        console.error("❌ Error loading data:", error);
+        this.showNotification("Lỗi tải dữ liệu: " + error.message, "error");
       } finally {
         this.loading = false;
       }
     },
-    
+
     async loadCanhList() {
       try {
         const response = await fetch(`${this.backendUrl}/QLModel/api/scenes/`);
         const data = await response.json();
         if (data.success) {
           // Chuyển đổi từ scenes -> canhList
-          this.canhList = data.scenes.map(scene => ({
+          this.canhList = data.scenes.map((scene) => ({
             ma_canh: scene.ma_canh,
-            ten_canh: scene.ten_canh
+            ten_canh: scene.ten_canh,
           }));
         }
       } catch (error) {
-        console.error('❌ Error loading canh list:', error);
+        console.error("❌ Error loading canh list:", error);
       }
     },
-    
+
     async loadLoaiMoHinhOptions() {
       try {
-        const response = await fetch(`${this.backendUrl}/QLModel/api/model-types/parent-options/`);
+        const response = await fetch(
+          `${this.backendUrl}/QLModel/api/model-types/parent-options/`,
+        );
         const data = await response.json();
         if (data.success) {
-          this.loaiMoHinhList = data.options.map(opt => ({
+          this.loaiMoHinhList = data.options.map((opt) => ({
             value: opt.value,
-            label: opt.label
+            label: opt.label,
           }));
         }
       } catch (error) {
-        console.error('❌ Error loading loai mo hinh list:', error);
+        console.error("❌ Error loading loai mo hinh list:", error);
       }
     },
-    
+
     refreshData() {
       this.pagination.page = 1;
       this.loadData();
       this.loadCanhList();
       this.loadLoaiMoHinhOptions();
-      this.showNotification('Đã làm mới dữ liệu', 'success');
+      this.showNotification("Đã làm mới dữ liệu", "success");
     },
-    
+
     // ============ FILTER & PAGINATION ============
     handleFilterChange() {
       this.pagination.page = 1;
       this.loadData();
     },
-    
+
     goToPage(page) {
       if (page >= 1 && page <= this.pagination.total_pages) {
         this.pagination.page = page;
         this.loadData();
       }
     },
-    
+
     // ============ FORM HANDLING ============
     showAddForm() {
       this.formData = this.getEmptyFormData();
       this.showForm = true;
     },
-    
+
     closeForm() {
       this.showForm = false;
       this.formData = this.getEmptyFormData();
     },
-    
+
     handleLoaiDoiTuongChange() {
       // Reset các field khi đổi loại đối tượng
-      this.formData.ten_doi_tuong = '';
-      this.formData.ten_loai = '';
-      this.formData.ten_cong_trinh = '';
+      this.formData.ten_doi_tuong = "";
+      this.formData.ten_loai = "";
+      this.formData.ten_cong_trinh = "";
     },
-    
+
     handleImageSelect(event) {
       const file = event.target.files[0];
       if (file) {
@@ -624,188 +690,203 @@ export default {
         this.formData.hinh_anh_name = file.name;
       }
     },
-    
+
     clearImage() {
       this.formData.hinh_anh_file = null;
-      this.formData.hinh_anh_name = '';
+      this.formData.hinh_anh_name = "";
       if (this.$refs.imageFileInput) {
-        this.$refs.imageFileInput.value = '';
+        this.$refs.imageFileInput.value = "";
       }
     },
-    
+
     // ============ CHỌN VỊ TRÍ TRÊN BẢN ĐỒ ============
     pickPositionOnMap() {
       // Emit event để chuyển về tab bản đồ và kích hoạt chế độ chọn vị trí
-      this.$emit('request-position-pick', (position) => {
+      this.$emit("request-position-pick", (position) => {
         // Callback khi đã chọn vị trí
         this.formData.lat = position.lat;
         this.formData.lon = position.lon;
         this.formData.height = position.height || 0;
-        this.showNotification('Đã chọn vị trí thành công', 'success');
+        this.showNotification("Đã chọn vị trí thành công", "success");
       });
     },
-    
+
     // ============ UPLOAD MODEL DIALOG ============
     showUploadModelDialog() {
-      this.showNotification('Chức năng upload model - Chuyển đến tab Quản lý Mô hình', 'info');
+      this.showNotification(
+        "Chức năng upload model - Chuyển đến tab Quản lý Mô hình",
+        "info",
+      );
       // Emit event để chuyển tab
-      this.$emit('navigate-to', 'model-manager');
+      this.$emit("navigate-to", "model-manager");
     },
-    
+
     // ============ SUBMIT ============
     async handleSubmit() {
       // Validate
       if (!this.formData.ma_canh_id) {
-        this.showNotification('Vui lòng chọn cảnh', 'warning');
+        this.showNotification("Vui lòng chọn cảnh", "warning");
         return;
       }
-      
+
       if (!this.formData.loai_doi_tuong) {
-        this.showNotification('Vui lòng chọn loại đối tượng', 'warning');
+        this.showNotification("Vui lòng chọn loại đối tượng", "warning");
         return;
       }
-      
+
       if (!this.formData.lat || !this.formData.lon) {
-        this.showNotification('Vui lòng nhập vị trí (lat, lon)', 'warning');
+        this.showNotification("Vui lòng nhập vị trí (lat, lon)", "warning");
         return;
       }
-      
+
       // Validate theo loại đối tượng
-      if (this.formData.loai_doi_tuong === '1' && !this.formData.ten_doi_tuong) {
-        this.showNotification('Vui lòng nhập tên đối tượng', 'warning');
+      if (
+        this.formData.loai_doi_tuong === "1" &&
+        !this.formData.ten_doi_tuong
+      ) {
+        this.showNotification("Vui lòng nhập tên đối tượng", "warning");
         return;
       }
-      
-      if (this.formData.loai_doi_tuong === '2' && !this.formData.ten_loai) {
-        this.showNotification('Vui lòng nhập tên loài cây', 'warning');
+
+      if (this.formData.loai_doi_tuong === "2" && !this.formData.ten_loai) {
+        this.showNotification("Vui lòng nhập tên loài cây", "warning");
         return;
       }
-      
-      if (this.formData.loai_doi_tuong === '3' && !this.formData.ten_cong_trinh) {
-        this.showNotification('Vui lòng nhập tên công trình', 'warning');
+
+      if (
+        this.formData.loai_doi_tuong === "3" &&
+        !this.formData.ten_cong_trinh
+      ) {
+        this.showNotification("Vui lòng nhập tên công trình", "warning");
         return;
       }
-      
+
       this.submitting = true;
-      
+
       try {
         // Tạo FormData
         const formData = new FormData();
-        
+
         // Thông tin cơ bản
-        formData.append('ma_canh_id', this.formData.ma_canh_id);
+        formData.append("ma_canh_id", this.formData.ma_canh_id);
         if (this.formData.ma_loai_mo_hinh_id) {
-          formData.append('ma_loai_mo_hinh_id', this.formData.ma_loai_mo_hinh_id);
+          formData.append(
+            "ma_loai_mo_hinh_id",
+            this.formData.ma_loai_mo_hinh_id,
+          );
         }
-        formData.append('loai_doi_tuong', this.formData.loai_doi_tuong);
-        formData.append('trang_thai', this.formData.trang_thai);
-        
+        formData.append("loai_doi_tuong", this.formData.loai_doi_tuong);
+        formData.append("trang_thai", this.formData.trang_thai);
+
         // Vị trí
-        formData.append('lat', this.formData.lat);
-        formData.append('lon', this.formData.lon);
-        formData.append('height', this.formData.height || 0);
-        formData.append('heading', this.formData.heading || 0);
-        formData.append('pitch', this.formData.pitch || 0);
-        formData.append('roll', this.formData.roll || 0);
-        formData.append('scale', this.formData.scale || 1.0);
-        
+        formData.append("lat", this.formData.lat);
+        formData.append("lon", this.formData.lon);
+        formData.append("height", this.formData.height || 0);
+        formData.append("heading", this.formData.heading || 0);
+        formData.append("pitch", this.formData.pitch || 0);
+        formData.append("roll", this.formData.roll || 0);
+        formData.append("scale", this.formData.scale || 1.0);
+
         // Hình ảnh
         if (this.formData.hinh_anh_file) {
-          formData.append('hinh_anh_file', this.formData.hinh_anh_file);
+          formData.append("hinh_anh_file", this.formData.hinh_anh_file);
         }
-        
+
         // Thông tin theo loại đối tượng
-        if (this.formData.loai_doi_tuong === '1') {
-          formData.append('loai_DT', this.formData.loai_DT);
-          formData.append('ten_doi_tuong', this.formData.ten_doi_tuong);
-          formData.append('duong_chuyen_dong', this.formData.duong_chuyen_dong || '');
+        if (this.formData.loai_doi_tuong === "1") {
+          formData.append("loai_DT", this.formData.loai_DT);
+          formData.append("ten_doi_tuong", this.formData.ten_doi_tuong);
+          formData.append(
+            "duong_chuyen_dong",
+            this.formData.duong_chuyen_dong || "",
+          );
           if (this.formData.van_toc) {
-            formData.append('van_toc', this.formData.van_toc);
+            formData.append("van_toc", this.formData.van_toc);
           }
-        } else if (this.formData.loai_doi_tuong === '2') {
-          formData.append('ten_loai', this.formData.ten_loai);
+        } else if (this.formData.loai_doi_tuong === "2") {
+          formData.append("ten_loai", this.formData.ten_loai);
           if (this.formData.cay_height) {
-            formData.append('cay_height', this.formData.cay_height);
+            formData.append("cay_height", this.formData.cay_height);
           }
           if (this.formData.duong_kinh) {
-            formData.append('duong_kinh', this.formData.duong_kinh);
+            formData.append("duong_kinh", this.formData.duong_kinh);
           }
           if (this.formData.tuoi) {
-            formData.append('tuoi', this.formData.tuoi);
+            formData.append("tuoi", this.formData.tuoi);
           }
-        } else if (this.formData.loai_doi_tuong === '3') {
-          formData.append('ten_cong_trinh', this.formData.ten_cong_trinh);
-          formData.append('loai_cong_trinh', this.formData.loai_cong_trinh);
-          formData.append('cap_bao_mat', this.formData.cap_bao_mat);
+        } else if (this.formData.loai_doi_tuong === "3") {
+          formData.append("ten_cong_trinh", this.formData.ten_cong_trinh);
+          formData.append("loai_cong_trinh", this.formData.loai_cong_trinh);
+          formData.append("cap_bao_mat", this.formData.cap_bao_mat);
         }
-        
+
         // Submit
         const response = await fetch(
           `${this.backendUrl}/QLModel/api/doi-tuong/create/`,
           {
-            method: 'POST',
-            body: formData
-          }
+            method: "POST",
+            body: formData,
+          },
         );
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
-          this.showNotification(data.message, 'success');
+          this.showNotification(data.message, "success");
           this.closeForm();
           this.loadData();
+          // ✅ Báo MainPage reload map để hiện model mới
+          this.$emit("object-created", this.formData.ma_canh_id);
         } else {
-          throw new Error(data.error || 'Có lỗi xảy ra');
+          throw new Error(data.error || "Có lỗi xảy ra");
         }
-        
       } catch (error) {
-        console.error('❌ Error submitting:', error);
-        this.showNotification('Lỗi: ' + error.message, 'error');
+        console.error("❌ Error submitting:", error);
+        this.showNotification("Lỗi: " + error.message, "error");
       } finally {
         this.submitting = false;
       }
     },
-    
+
     // ============ DELETE ============
     async confirmDelete(item) {
       if (!confirm(`Bạn có chắc muốn xóa đối tượng ID ${item.id}?`)) {
         return;
       }
-      
+
       try {
         const response = await fetch(
           `${this.backendUrl}/QLModel/api/doi-tuong/${item.id}/delete/`,
-          { method: 'DELETE' }
+          { method: "DELETE" },
         );
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
-          this.showNotification(data.message, 'success');
+          this.showNotification(data.message, "success");
           this.loadData();
         } else {
-          throw new Error(data.error || 'Có lỗi xảy ra');
+          throw new Error(data.error || "Có lỗi xảy ra");
         }
-        
       } catch (error) {
-        console.error('❌ Error deleting:', error);
-        this.showNotification('Lỗi: ' + error.message, 'error');
+        console.error("❌ Error deleting:", error);
+        this.showNotification("Lỗi: " + error.message, "error");
       }
     },
-    
+
     // ============ UTILITIES ============
-    showNotification(message, type = 'info') {
+    showNotification(message, type = "info") {
       this.notification = {
         show: true,
         message: message,
-        type: type
+        type: type,
       };
-      
+
       setTimeout(() => {
         this.notification.show = false;
       }, 3000);
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -822,7 +903,7 @@ export default {
 .main-panel {
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -845,8 +926,8 @@ export default {
 }
 
 .action-buttons {
-    display: flex;
-    gap: 10px;
+  display: flex;
+  gap: 10px;
 }
 
 /* Filter Section */
@@ -929,7 +1010,8 @@ export default {
   gap: 5px;
 }
 
-.loading-cell, .empty-cell {
+.loading-cell,
+.empty-cell {
   text-align: center;
   padding: 40px !important;
   color: #999;
@@ -963,10 +1045,8 @@ export default {
 }
 
 .btn-primary {
-    position: absolute;
-    right: 500px;
-    background: #667eea;
-    color: white;
+  background: #667eea;
+  color: white;
 }
 
 .btn-primary:hover {
@@ -974,10 +1054,8 @@ export default {
 }
 
 .btn-secondary {
-    position: absolute;
-    right: 300px;
-    background: #6c757d;
-    color: white;
+  background: #6c757d;
+  color: white;
 }
 
 .btn-secondary:hover {
@@ -1036,7 +1114,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1051,7 +1129,7 @@ export default {
   max-width: 800px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .large-dialog {
@@ -1092,7 +1170,7 @@ export default {
 }
 
 .btn-close:hover {
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .dialog-body {
@@ -1128,7 +1206,9 @@ export default {
   color: #dc3545;
 }
 
-.form-input, .form-select, .form-textarea {
+.form-input,
+.form-select,
+.form-textarea {
   width: 100%;
   padding: 10px;
   border: 1px solid #ddd;
@@ -1242,7 +1322,7 @@ export default {
   border-radius: 4px;
   color: white;
   font-size: 14px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   z-index: 10001;
   animation: slideIn 0.3s;
 }

@@ -9,870 +9,850 @@ import {
   Matrix4,
   HeadingPitchRoll,
   Color,
-  PolylineGraphics,
-  Entity,
 } from "cesium";
 
 export class UploadModelHandler {
   constructor(viewer) {
     this.viewer = viewer;
-    this.selectedCoordinates = null;
     this.isSelectingLocation = false;
     this.handler = null;
-    this.isUploading = false;
 
-    // Preview model state
+    // Vị trí đã chọn trên map
+    this.selectedCoords = { lon: null, lat: null, height: null };
+
+    // Preview model trên map
     this.previewModel = null;
-    this.previewEntity = null;
-    this.rotationHandler = null;
-    this.isRotating = false;
+    this.previewMarker = null; // entity đánh dấu điểm
+
+    // Rotation state
     this.currentRotation = { heading: 0, pitch: 0, roll: 0 };
-    this.rotationGizmo = null;
+    this.isRotating = false;
+    this.rotationHandler = null;
+
+    // Data từ API
+    this.canhOptions = [];
+    this.loaiMoHinhOptions = [];
+
+    // File GLB đang chọn
+    this.selectedGlbFile = null;
 
     this.init();
   }
 
+  // ─────────────────────────────────────────
+  // INIT: gắn event cho nút btnUpModel
+  // ─────────────────────────────────────────
   init() {
-    const btnUpModel = document.getElementById("btnUpModel");
-    if (btnUpModel) {
-      btnUpModel.addEventListener("click", () => this.openUploadPopup());
+    const btn = document.getElementById("btnUpModel");
+    if (btn) {
+      btn.addEventListener("click", () => this.startFlow());
     }
-
-    this.fetchCsrfToken();
-    this.createUploadPopup();
-    this.setupPopupEvents();
+    this.createModal();
   }
 
-  showNotification(message, type = "info") {
-    console.log(`${type.toUpperCase()}: ${message}`);
-
-    const existingNotifications = document.querySelectorAll(".notification");
-    let topPosition = 10;
-
-    existingNotifications.forEach((notification) => {
-      const notificationHeight = notification.offsetHeight + 10;
-      topPosition += notificationHeight;
-    });
-
-    const notification = document.createElement("div");
-    notification.className = `notification notification-${type}`;
-    notification.textContent = message;
-    notification.style.cssText = `
-    position: fixed;
-    top: ${topPosition}px;
-    right: 440px;
-    background: ${
-      type === "success" ? "#4CAF50" : type === "error" ? "#f44336" : "#2196F3"
-    };
-    color: white;
-    padding: 12px 20px;
-    border-radius: 4px;
-    z-index: 10001;
-    max-width: 300px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    animation: slideIn 0.3s ease;
-  `;
-
-    if (!document.querySelector("#notification-styles")) {
-      const style = document.createElement("style");
-      style.id = "notification-styles";
-      style.textContent = `
-      @keyframes slideIn {
-        from {
-          transform: translateX(100%);
-          opacity: 0;
-        }
-        to {
-          transform: translateX(0);
-          opacity: 1;
-        }
-      }
-      @keyframes slideOut {
-        from {
-          transform: translateX(0);
-          opacity: 1;
-        }
-        to {
-          transform: translateX(100%);
-          opacity: 0;
-        }
-      }
-    `;
-      document.head.appendChild(style);
-    }
-
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-      if (notification.parentNode) {
-        notification.style.animation = "slideOut 0.3s ease";
-        setTimeout(() => {
-          if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-          }
-        }, 300);
-      }
-    }, 3000);
+  // ─────────────────────────────────────────
+  // STEP 1: Bắt đầu flow -> hiện overlay "click chọn điểm"
+  // ─────────────────────────────────────────
+  startFlow() {
+    this.resetState();
+    this.showPickingOverlay();
+    this.startLocationSelection();
   }
 
-  async fetchCsrfToken() {
-    try {
-      const response = await fetch("http://localhost:8000/api/csrf-token/");
-      const data = await response.json();
-      return data.csrfToken;
-    } catch (error) {
-      console.error("❌ Failed to fetch CSRF token:", error);
-      this.showNotification("Không thể lấy CSRF Token", "error");
-      return null;
-    }
+  // ─────────────────────────────────────────
+  // Hiện overlay "Đang chọn vị trí..."
+  // ─────────────────────────────────────────
+  showPickingOverlay() {
+    const overlay = document.getElementById("uploadPickOverlay");
+    if (overlay) overlay.style.display = "flex";
   }
 
-  disableMapInteraction() {
-    this.viewer.scene.screenSpaceCameraController.enableRotate = false;
-    this.viewer.scene.screenSpaceCameraController.enableZoom = false;
-    this.viewer.scene.screenSpaceCameraController.enableTilt = false;
-    this.viewer.scene.screenSpaceCameraController.enableLook = false;
-    this.viewer.scene.screenSpaceCameraController.enableTranslate = false;
+  hidePickingOverlay() {
+    const overlay = document.getElementById("uploadPickOverlay");
+    if (overlay) overlay.style.display = "none";
   }
 
-  enableMapInteraction() {
-    this.viewer.scene.screenSpaceCameraController.enableRotate = true;
-    this.viewer.scene.screenSpaceCameraController.enableZoom = true;
-    this.viewer.scene.screenSpaceCameraController.enableTilt = true;
-    this.viewer.scene.screenSpaceCameraController.enableLook = true;
-    this.viewer.scene.screenSpaceCameraController.enableTranslate = true;
-  }
-
-  // Mở popup đầu tiên
-  openUploadPopup() {
-    const modal = document.getElementById("uploadModal");
-
-    // Reset form
-    document.getElementById("coordLon").value = "";
-    document.getElementById("coordLat").value = "";
-    document.getElementById("coordHeight").value = "";
-    document.getElementById("modelName").value = "";
-    document.getElementById("modelScale").value = "1";
-    document.getElementById("rotationHeading").value = "0";
-    document.getElementById("rotationHeadingValue").value = "0";
-    document.getElementById("rotationPitch").value = "0";
-    document.getElementById("rotationPitchValue").value = "0";
-    document.getElementById("rotationRoll").value = "0";
-    document.getElementById("rotationRollValue").value = "0";
-    document.getElementById("glbFile").value = "";
-    document.querySelector(".file-info").textContent = "";
-    document.getElementById("uploadStatus").innerHTML = "";
-    document.getElementById("previewSection").style.display = "none";
-
-    // Disable nút chọn vị trí và upload ban đầu
-    document.getElementById("btnSelectLocation").disabled = false;
-    document.getElementById("btnUploadSubmit").disabled = true;
-
-    this.clearPreview();
-
-    modal.style.display = "block";
-    this.showNotification("Nhấn 'Chọn vị trí model' để bắt đầu", "info");
-  }
-
+  // ─────────────────────────────────────────
+  // Lắng nghe click trên map -> lấy tọa độ
+  // ─────────────────────────────────────────
   startLocationSelection() {
     this.isSelectingLocation = true;
-    const btnSelect = document.getElementById("btnSelectLocation");
-    btnSelect.textContent = "⏳ Đang chọn vị trí...";
-    btnSelect.disabled = true;
-
-    this.showNotification("📍 Click vào bản đồ để chọn vị trí", "info");
-    this.showNotification("Nhấn ESC để hủy", "info");
+    this.showNotification(
+      "📍 Click lên bản đồ để chọn vị trí đặt model",
+      "info",
+    );
 
     this.handler = new ScreenSpaceEventHandler(this.viewer.canvas);
 
-    const onLeftClick = (click) => {
-      const cartesian = this.viewer.scene.pickPosition(click.position);
+    // ESC -> hủy
+    this._escHandler = (e) => {
+      if (e.key === "Escape") this.cancelFlow();
+    };
+    document.addEventListener("keydown", this._escHandler);
 
+    this.handler.setInputAction((click) => {
+      const cartesian = this.viewer.scene.pickPosition(click.position);
       if (!cartesian) {
-        this.showNotification(
-          "Không thể xác định vị trí, vui lòng thử lại",
-          "error",
-        );
+        this.showNotification("Không xác định được vị trí, thử lại", "error");
         return;
       }
 
-      const cartographic = Cartographic.fromCartesian(cartesian);
-      const lon = CesiumMath.toDegrees(cartographic.longitude);
-      const lat = CesiumMath.toDegrees(cartographic.latitude);
-      const height = cartographic.height;
+      const carto = Cartographic.fromCartesian(cartesian);
+      this.selectedCoords = {
+        lon: CesiumMath.toDegrees(carto.longitude),
+        lat: CesiumMath.toDegrees(carto.latitude),
+        height: carto.height,
+      };
+
+      // Cleanup handler
+      this.handler.removeInputAction(ScreenSpaceEventType.LEFT_CLICK);
+      this.isSelectingLocation = false;
+      document.removeEventListener("keydown", this._escHandler);
+
+      // Đánh dấu điểm trên map
+      this.addMarker();
 
       this.showNotification(
-        `✅ Đã chọn vị trí: Lon=${lon.toFixed(6)}, Lat=${lat.toFixed(6)}`,
+        "✅ Đã chọn vị trí. Điền thông tin model.",
         "success",
       );
 
-      this.isSelectingLocation = false;
-      this.handler.removeInputAction(ScreenSpaceEventType.LEFT_CLICK);
-
-      // Cập nhật tọa độ vào form
-      this.updateCoordinates(lon, lat, height);
-
-      btnSelect.textContent = "✓ Đã chọn vị trí";
-      btnSelect.disabled = false;
-    };
-
-    this.handler.setInputAction(onLeftClick, ScreenSpaceEventType.LEFT_CLICK);
-
-    const escapeHandler = (e) => {
-      if (e.key === "Escape" && this.isSelectingLocation) {
-        this.cancelLocationSelection();
-        if (this.handler) {
-          this.handler.removeInputAction(ScreenSpaceEventType.LEFT_CLICK);
-        }
-        document.removeEventListener("keydown", escapeHandler);
-      }
-    };
-
-    document.addEventListener("keydown", escapeHandler);
+      // Fetch options rồi mở modal form
+      this.hidePickingOverlay();
+      this.loadOptions().then(() => {
+        this.fillCoordFields();
+        this.showModal();
+      });
+    }, ScreenSpaceEventType.LEFT_CLICK);
   }
 
-  cancelLocationSelection() {
+  cancelFlow() {
     this.isSelectingLocation = false;
-    const btnSelect = document.getElementById("btnSelectLocation");
-    btnSelect.textContent = "📍 Chọn vị trí model";
-    btnSelect.disabled = false;
+    if (this.handler) {
+      this.handler.removeInputAction(ScreenSpaceEventType.LEFT_CLICK);
+      this.handler.destroy();
+      this.handler = null;
+    }
+    if (this._escHandler)
+      document.removeEventListener("keydown", this._escHandler);
+    this.hidePickingOverlay();
+    this.clearPreview();
     this.showNotification("Đã hủy chọn vị trí", "info");
   }
 
-  updateCoordinates(lon, lat, height) {
-    document.getElementById("coordLon").value = lon.toFixed(6);
-    document.getElementById("coordLat").value = lat.toFixed(6);
-    document.getElementById("coordHeight").value = height.toFixed(2);
-  }
-
-  createUploadPopup() {
-    const popupHtml = `
-      <div id="uploadModal" class="modal">
-        <div class="modal-content upload-container">
-          <span class="close">&times;</span>
-          <h2>📦 Upload Model 3D (.glb)</h2>
-
-          <!-- Nút chọn vị trí -->
-          <div class="form-group">
-            <button id="btnSelectLocation" class="btn-select-location">
-              📍 Chọn vị trí model
-            </button>
-          </div>
-
-          <!-- Tọa độ -->
-          <div class="coordinates-display">
-            <div class="coord-item">
-              <label>Kinh độ (Lon):</label>
-              <input type="number" id="coordLon" readonly step="0.0001" placeholder="Chưa chọn">
-            </div>
-            <div class="coord-item">
-              <label>Vĩ độ (Lat):</label>
-              <input type="number" id="coordLat" readonly step="0.0001" placeholder="Chưa chọn">
-            </div>
-            <div class="coord-item">
-              <label>Độ cao (m):</label>
-              <input type="number" id="coordHeight" readonly step="0.01" placeholder="Chưa chọn">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="modelName">Tên model:</label>
-            <input type="text" id="modelName" placeholder="Ví dụ: Tòa nhà A" required>
-          </div>
-
-          <div class="form-group">
-            <label for="modelScale">Tỷ lệ (scale):</label>
-            <input type="number" id="modelScale" value="1" min="0.1" step="0.1" required>
-          </div>
-
-          <div class="form-group">
-            <label for="glbFile">Chọn file .glb:</label>
-            <input type="file" id="glbFile" accept=".glb" required>
-            <span class="file-info"></span>
-          </div>
-
-          <div id="previewSection" style="display: none;">
-            <div class="preview-controls">
-              <h3>🔄 Điều chỉnh góc xoay</h3>
-              <p class="instruction">Kéo mô hình để xoay hoặc dùng các slider bên dưới</p>
-              <button id="btnEnableRotation" class="btn-rotation">
-                🔄 Bật chế độ xoay
-              </button>
-            </div>
-
-            <div class="rotation-controls">
-              <div class="rotation-item">
-                <label for="rotationHeading">Heading (Yaw - Z):</label>
-                <div class="rotation-input">
-                  <input type="range" id="rotationHeading" min="0" max="360" value="0" step="1">
-                  <input type="number" id="rotationHeadingValue" value="0" min="0" max="360" step="1">
-                  <span>°</span>
-                </div>
-              </div>
-
-              <div class="rotation-item">
-                <label for="rotationPitch">Pitch (X):</label>
-                <div class="rotation-input">
-                  <input type="range" id="rotationPitch" min="-90" max="90" value="0" step="1">
-                  <input type="number" id="rotationPitchValue" value="0" min="-90" max="90" step="1">
-                  <span>°</span>
-                </div>
-              </div>
-
-              <div class="rotation-item">
-                <label for="rotationRoll">Roll (Y):</label>
-                <div class="rotation-input">
-                  <input type="range" id="rotationRoll" min="-180" max="180" value="0" step="1">
-                  <input type="number" id="rotationRollValue" value="0" min="-180" max="180" step="1">
-                  <span>°</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="button-group">
-            <button id="btnUploadSubmit" class="btn-submit">✓ Upload</button>
-            <button id="btnUploadCancel" class="btn-cancel">✕ Huỷ</button>
-          </div>
-
-          <div id="uploadStatus" class="upload-status"></div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML("beforeend", popupHtml);
-  }
-
-  setupPopupEvents() {
-    const modal = document.getElementById("uploadModal");
-
-    if (modal.getAttribute("data-events-bound") === "true") {
-      return;
-    }
-
-    const closeBtn = modal.querySelector(".close");
-    const cancelBtn = document.getElementById("btnUploadCancel");
-    const submitBtn = document.getElementById("btnUploadSubmit");
-    const fileInput = document.getElementById("glbFile");
-    const rotationBtn = document.getElementById("btnEnableRotation");
-    const selectLocationBtn = document.getElementById("btnSelectLocation");
-
-    const closeModalHandler = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this.closeModal();
-    };
-
-    const submitHandler = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this.submitUpload();
-    };
-
-    closeBtn.addEventListener("click", closeModalHandler);
-    cancelBtn.addEventListener("click", closeModalHandler);
-    submitBtn.addEventListener("click", submitHandler);
-
-    // Nút chọn vị trí
-    selectLocationBtn.addEventListener("click", () => {
-      this.startLocationSelection();
-    });
-
-    // Rotation slider sync
-    const setupRotationSync = (sliderId, inputId, key) => {
-      const slider = document.getElementById(sliderId);
-      const input = document.getElementById(inputId);
-
-      if (slider && input) {
-        slider.addEventListener("input", () => {
-          input.value = slider.value;
-          this.updatePreviewRotation(key, parseFloat(slider.value));
-        });
-
-        input.addEventListener("input", () => {
-          slider.value = input.value;
-          this.updatePreviewRotation(key, parseFloat(input.value));
-        });
-      }
-    };
-
-    setupRotationSync("rotationHeading", "rotationHeadingValue", "heading");
-    setupRotationSync("rotationPitch", "rotationPitchValue", "pitch");
-    setupRotationSync("rotationRoll", "rotationRollValue", "roll");
-
-    // File selection
-    fileInput.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const fileName = file.name;
-        const fileInfo = modal.querySelector(".file-info");
-        fileInfo.textContent = `✓ ${fileName}`;
-        fileInfo.style.color = "#4caf50";
-        this.showNotification(`Đã chọn file: ${fileName}`, "success");
-
-        // Kiểm tra xem đã chọn vị trí chưa
-        const lon = document.getElementById("coordLon").value;
-        if (lon) {
-          // Load preview
-          this.loadPreviewModel(file);
-          // Enable nút upload
-          submitBtn.disabled = false;
-        } else {
-          this.showNotification(
-            "Vui lòng chọn vị trí trên bản đồ trước",
-            "error",
-          );
-        }
-      }
-    });
-
-    // Rotation mode toggle
-    rotationBtn.addEventListener("click", () => {
-      this.toggleRotationMode();
-    });
-
-    modal.setAttribute("data-events-bound", "true");
-  }
-
-  async loadPreviewModel(file) {
-    try {
-      this.showNotification("Đang tải preview model...", "info");
-
-      // Remove old preview
-      this.clearPreview();
-
-      const lon = parseFloat(document.getElementById("coordLon").value);
-      const lat = parseFloat(document.getElementById("coordLat").value);
-      const height = parseFloat(document.getElementById("coordHeight").value);
-      const scale = parseFloat(document.getElementById("modelScale").value);
-
-      if (!lon || !lat) {
-        this.showNotification("Vui lòng chọn vị trí trước", "error");
-        return;
-      }
-
-      // Create blob URL
-      const blobUrl = URL.createObjectURL(file);
-
-      const position = Cartesian3.fromDegrees(lon, lat, height);
-      const hpr = new HeadingPitchRoll(0, 0, 0);
-
-      const modelMatrix = Transforms.headingPitchRollToFixedFrame(
-        position,
-        hpr,
-      );
-
-      this.previewModel = await Model.fromGltfAsync({
-        url: blobUrl,
-        modelMatrix: modelMatrix,
-        scale: scale,
-        silhouetteColor: Color.YELLOW,
-        silhouetteSize: 2.0,
-      });
-
-      // Set semi-transparent
-      this.previewModel.color = Color.fromAlpha(Color.WHITE, 0.5);
-
-      this.viewer.scene.primitives.add(this.previewModel);
-
-      // Add rotation gizmo
-      this.addRotationGizmo(position);
-
-      // Show preview section
-      document.getElementById("previewSection").style.display = "block";
-
-      this.showNotification(
-        "Preview model đã tải. Bạn có thể xoay model!",
-        "success",
-      );
-    } catch (error) {
-      console.error("❌ Error loading preview:", error);
-      this.showNotification("Lỗi khi tải preview model", "error");
-    }
-  }
-
-  addRotationGizmo(position) {
-    // Add visual rotation indicator
-    const radius = 20;
-
-    this.rotationGizmo = this.viewer.entities.add({
-      position: position,
-      ellipse: {
-        semiMinorAxis: radius,
-        semiMajorAxis: radius,
-        material: Color.YELLOW.withAlpha(0.3),
-        outline: true,
-        outlineColor: Color.YELLOW,
-        outlineWidth: 2,
+  // ─────────────────────────────────────────
+  // Marker đánh dấu điểm đã chọn
+  // ─────────────────────────────────────────
+  addMarker() {
+    this.removeMarker();
+    this.previewMarker = this.viewer.entities.add({
+      position: Cartesian3.fromDegrees(
+        this.selectedCoords.lon,
+        this.selectedCoords.lat,
+        this.selectedCoords.height,
+      ),
+      billboard: {
+        image: this.createPinImage(), // SVG pin
+        verticalOrigin: 1, // BOTTOM
+        scale: 1.5,
       },
     });
   }
 
-  toggleRotationMode() {
-    const btn = document.getElementById("btnEnableRotation");
-
-    if (this.isRotating) {
-      // Disable rotation mode
-      this.isRotating = false;
-      btn.textContent = "🔄 Bật chế độ xoay";
-      btn.classList.remove("active");
-      this.enableMapInteraction();
-
-      if (this.rotationHandler) {
-        this.rotationHandler.destroy();
-        this.rotationHandler = null;
-      }
-
-      this.showNotification("Đã tắt chế độ xoay", "info");
-    } else {
-      // Enable rotation mode
-      this.isRotating = true;
-      btn.textContent = "🔒 Tắt chế độ xoay";
-      btn.classList.add("active");
-      this.disableMapInteraction();
-
-      this.setupRotationHandler();
-      this.showNotification("Kéo chuột để xoay model", "info");
+  removeMarker() {
+    if (this.previewMarker) {
+      this.viewer.entities.remove(this.previewMarker);
+      this.previewMarker = null;
     }
   }
 
-  setupRotationHandler() {
-    this.rotationHandler = new ScreenSpaceEventHandler(this.viewer.canvas);
+  // Tạo SVG pin đơn giản dùng data URL
+  createPinImage() {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="36" viewBox="0 0 24 36">
+      <path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 24 12 24s12-15 12-24c0-6.63-5.37-12-12-12z" fill="#e53935"/>
+      <circle cx="12" cy="12" r="5" fill="white"/>
+    </svg>`;
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  }
 
-    let startPosition = null;
+  // ─────────────────────────────────────────
+  // FETCH options từ API
+  // ─────────────────────────────────────────
+  async loadOptions() {
+    try {
+      const [canhRes, loaiRes] = await Promise.all([
+        fetch("http://localhost:8000/api/canh/options/"),
+        fetch("http://localhost:8000/api/loai-mo-hinh/options/"),
+      ]);
+      const canhData = await canhRes.json();
+      const loaiData = await loaiRes.json();
 
-    // 🖱️ Khi bắt đầu kéo chuột
-    this.rotationHandler.setInputAction((movement) => {
-      startPosition = movement.position;
-    }, ScreenSpaceEventType.LEFT_DOWN);
+      if (canhData.success) this.canhOptions = canhData.data;
+      if (loaiData.success) this.loaiMoHinhOptions = loaiData.data;
 
-    // 🖱️ Khi đang kéo
-    this.rotationHandler.setInputAction((movement) => {
-      if (!startPosition) return;
+      this.renderSelects();
+    } catch (err) {
+      console.error("❌ loadOptions:", err);
+      this.showNotification(
+        "Không tải được danh sách cảnh / loại mô hình",
+        "error",
+      );
+    }
+  }
 
-      const deltaX = movement.endPosition.x - startPosition.x;
-      const deltaY = movement.endPosition.y - startPosition.y;
+  renderSelects() {
+    // Cảnh
+    const canhSelect = document.getElementById("umCanhSelect");
+    if (canhSelect) {
+      canhSelect.innerHTML = '<option value="">-- Chọn cảnh --</option>';
+      this.canhOptions.forEach((c) => {
+        canhSelect.innerHTML += `<option value="${c.ma_canh}">${c.ten_canh}</option>`;
+      });
+    }
 
-      if (movement.shiftKey) {
-        // 🔄 ROLL
-        this.currentRotation.roll =
-          (this.currentRotation.roll + deltaX * 0.5) % 360;
+    // Loại mô hình
+    const loaiSelect = document.getElementById("umLoaiMoHinhSelect");
+    if (loaiSelect) {
+      loaiSelect.innerHTML =
+        '<option value="">-- Chọn loại mô hình --</option>';
+      this.loaiMoHinhOptions.forEach((l) => {
+        loaiSelect.innerHTML += `<option value="${l.value}">${l.label}</option>`;
+      });
+    }
+  }
 
-        document.getElementById("rotationRoll").value =
-          this.currentRotation.roll;
-        document.getElementById("rotationRollValue").value = Math.round(
-          this.currentRotation.roll,
-        );
-      } else {
-        // 🔄 HEADING
-        this.currentRotation.heading =
-          (this.currentRotation.heading + deltaX * 0.5) % 360;
+  // ─────────────────────────────────────────
+  // Fill tọa độ vào form
+  // ─────────────────────────────────────────
+  fillCoordFields() {
+    document.getElementById("umLon").value = this.selectedCoords.lon.toFixed(6);
+    document.getElementById("umLat").value = this.selectedCoords.lat.toFixed(6);
+    document.getElementById("umHeight").value =
+      this.selectedCoords.height.toFixed(2);
+  }
 
-        // 🔄 PITCH
-        this.currentRotation.pitch = Math.max(
-          -90,
-          Math.min(90, this.currentRotation.pitch - deltaY * 0.5),
-        );
+  // ─────────────────────────────────────────
+  // MODAL: tạo HTML
+  // ─────────────────────────────────────────
+  createModal() {
+    const html = `
+    <!-- Overlay: "Chọn điểm trên bản đồ" -->
+    <div id="uploadPickOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45);
+         z-index:9000; align-items:flex-end; justify-content:center; pointer-events:none;">
+      <div style="background:#1e2a3a; color:#fff; padding:14px 28px; border-radius:12px 12px 0 0;
+           font-size:16px; display:flex; align-items:center; gap:12px; pointer-events:auto; box-shadow:0 -4px 20px rgba(0,0,0,.4);">
+        <span style="font-size:22px;">📍</span>
+        <span>Click lên bản đồ để chọn vị trí đặt model</span>
+        <button onclick="window.__uploadHandler && window.__uploadHandler.cancelFlow()"
+          style="margin-left:auto; background:#e53935; border:none; color:#fff; width:28px; height:28px;
+                 border-radius:6px; cursor:pointer; font-size:16px;">✕</button>
+      </div>
+    </div>
 
-        document.getElementById("rotationHeading").value =
-          this.currentRotation.heading;
-        document.getElementById("rotationHeadingValue").value = Math.round(
-          this.currentRotation.heading,
-        );
+    <!-- Modal Form -->
+    <div id="uploadModal" class="um-overlay" style="display:none;">
+      <div class="um-modal">
 
-        document.getElementById("rotationPitch").value =
-          this.currentRotation.pitch;
-        document.getElementById("rotationPitchValue").value = Math.round(
-          this.currentRotation.pitch,
-        );
+        <!-- Header -->
+        <div class="um-header">
+          <h3>📦 Thêm Model Lên Bản Đồ</h3>
+          <button class="um-close" id="umClose">✕</button>
+        </div>
+
+        <!-- Body -->
+        <div class="um-body">
+
+          <!-- Tọa độ (readonly) -->
+          <div class="um-section um-coords">
+            <label>Vị trí đã chọn</label>
+            <div class="um-coord-row">
+              <div class="um-coord-item">
+                <span>Kinh độ</span>
+                <input type="text" id="umLon" readonly />
+              </div>
+              <div class="um-coord-item">
+                <span>Vĩ độ</span>
+                <input type="text" id="umLat" readonly />
+              </div>
+              <div class="um-coord-item">
+                <span>Độ cao (m)</span>
+                <input type="text" id="umHeight" readonly />
+              </div>
+            </div>
+            <!-- Đổi vị trí -->
+            <button class="um-btn-reselect" id="umReselect">🔄 Đổi vị trí</button>
+          </div>
+
+          <!-- Chọn cảnh -->
+          <div class="um-section">
+            <label>Cảnh <span class="um-req">*</span></label>
+            <select id="umCanhSelect" class="um-select"></select>
+          </div>
+
+          <!-- Chọn loại mô hình -->
+          <div class="um-section">
+            <label>Loại mô hình <span class="um-req">*</span></label>
+            <select id="umLoaiMoHinhSelect" class="um-select"></select>
+          </div>
+
+          <!-- Chọn loại đối tượng -->
+          <div class="um-section">
+            <label>Loại đối tượng <span class="um-req">*</span></label>
+            <select id="umLoaiDoiTuong" class="um-select">
+              <option value="">-- Chọn loại --</option>
+              <option value="1">Đối tượng chuyển động</option>
+              <option value="2">Cây</option>
+              <option value="3">Công trình</option>
+            </select>
+          </div>
+
+          <!-- Form con: thay đổi theo loại đối tượng -->
+          <div id="umDynamicForm" class="um-section um-dynamic"></div>
+
+          <!-- Scale -->
+          <div class="um-section um-row">
+            <div class="um-col">
+              <label>Scale</label>
+              <input type="number" id="umScale" value="1" min="0.01" step="0.1" class="um-input" />
+            </div>
+          </div>
+
+          <!-- Rotation -->
+          <div class="um-section">
+            <label>Góc xoay</label>
+            <div class="um-rotation-grid">
+              <div class="um-rot-item">
+                <span>Heading (°)</span>
+                <input type="range" id="umSliderHeading" min="0" max="360" value="0" step="1" />
+                <input type="number" id="umValHeading" value="0" min="0" max="360" step="1" class="um-rot-num" />
+              </div>
+              <div class="um-rot-item">
+                <span>Pitch (°)</span>
+                <input type="range" id="umSliderPitch" min="-90" max="90" value="0" step="1" />
+                <input type="number" id="umValPitch" value="0" min="-90" max="90" step="1" class="um-rot-num" />
+              </div>
+              <div class="um-rot-item">
+                <span>Roll (°)</span>
+                <input type="range" id="umSliderRoll" min="-180" max="180" value="0" step="1" />
+                <input type="number" id="umValRoll" value="0" min="-180" max="180" step="1" class="um-rot-num" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Chọn file GLB để preview -->
+          <div class="um-section">
+            <label>Preview file GLB (tùy chọn)</label>
+            <div class="um-file-row">
+              <label class="um-file-label" for="umGlbFile">
+                <span>📁</span>
+                <span id="umGlbFileName">Chọn file .glb</span>
+              </label>
+              <input type="file" id="umGlbFile" accept=".glb" class="um-file-input" />
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="um-footer">
+          <button class="um-btn um-btn-cancel" id="umCancel">Hủy</button>
+          <button class="um-btn um-btn-submit" id="umSubmit">
+            <span id="umSubmitText">✓ Thêm Model</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", html);
+    this.bindModalEvents();
+  }
+
+  // ─────────────────────────────────────────
+  // Bind events cho modal
+  // ─────────────────────────────────────────
+  bindModalEvents() {
+    // Đóng modal
+    document
+      .getElementById("umClose")
+      .addEventListener("click", () => this.closeModal());
+    document
+      .getElementById("umCancel")
+      .addEventListener("click", () => this.closeModal());
+    document.getElementById("uploadModal").addEventListener("click", (e) => {
+      if (e.target.id === "uploadModal") this.closeModal();
+    });
+
+    // Đổi vị trí -> quay lại chọn điểm
+    document.getElementById("umReselect").addEventListener("click", () => {
+      this.closeModal();
+      this.clearPreview();
+      this.showPickingOverlay();
+      this.startLocationSelection();
+    });
+
+    // Submit
+    document
+      .getElementById("umSubmit")
+      .addEventListener("click", () => this.submitModel());
+
+    // Loại đối tượng thay đổi -> render form con
+    document
+      .getElementById("umLoaiDoiTuong")
+      .addEventListener("change", () => this.renderDynamicForm());
+
+    // Loại mô hình thay đổi -> load preview nếu có file
+    document
+      .getElementById("umLoaiMoHinhSelect")
+      .addEventListener("change", () => {
+        this.loadPreviewFromServer();
+      });
+
+    // File GLB chọn -> preview
+    document.getElementById("umGlbFile").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        this.selectedGlbFile = file;
+        document.getElementById("umGlbFileName").textContent = file.name;
+        this.loadPreviewFromBlob(file);
       }
+    });
 
+    // Sync rotation sliders <-> number inputs
+    this.syncRotation("umSliderHeading", "umValHeading", "heading");
+    this.syncRotation("umSliderPitch", "umValPitch", "pitch");
+    this.syncRotation("umSliderRoll", "umValRoll", "roll");
+
+    // Scale change -> update preview
+    document
+      .getElementById("umScale")
+      .addEventListener("input", () => this.applyRotationToPreview());
+  }
+
+  syncRotation(sliderId, inputId, key) {
+    const slider = document.getElementById(sliderId);
+    const input = document.getElementById(inputId);
+    slider.addEventListener("input", () => {
+      input.value = slider.value;
+      this.currentRotation[key] = parseFloat(slider.value);
       this.applyRotationToPreview();
-      startPosition = movement.endPosition;
-    }, ScreenSpaceEventType.MOUSE_MOVE);
-
-    // 🖱️ Khi thả chuột
-    this.rotationHandler.setInputAction(() => {
-      startPosition = null;
-    }, ScreenSpaceEventType.LEFT_UP);
+    });
+    input.addEventListener("input", () => {
+      slider.value = input.value;
+      this.currentRotation[key] = parseFloat(input.value);
+      this.applyRotationToPreview();
+    });
   }
 
-  updatePreviewRotation(key, value) {
-    this.currentRotation[key] = value;
-    this.applyRotationToPreview();
+  // ─────────────────────────────────────────
+  // Render form con theo loại đối tượng
+  // ─────────────────────────────────────────
+  renderDynamicForm() {
+    const loai = document.getElementById("umLoaiDoiTuong").value;
+    const container = document.getElementById("umDynamicForm");
+
+    const templates = {
+      1: `<!-- Đối tượng chuyển động -->
+        <div class="um-section">
+          <label>Loại <span class="um-req">*</span></label>
+          <select id="umLoaiDT" class="um-select">
+            <option value="TAU">Tàu</option>
+            <option value="XE">Xe</option>
+            <option value="MAY_BAY">Máy bay</option>
+            <option value="UAV">UAV</option>
+          </select>
+        </div>
+        <div class="um-section">
+          <label>Tên đối tượng <span class="um-req">*</span></label>
+          <input type="text" id="umTenDoiTuong" placeholder="VD: Tàu A..." class="um-input" />
+        </div>
+        <div class="um-section um-row">
+          <div class="um-col">
+            <label>Đường chuyển động</label>
+            <input type="text" id="umDuongCDong" placeholder="VD: Route A-B" class="um-input" />
+          </div>
+          <div class="um-col">
+            <label>Vận tốc (km/h)</label>
+            <input type="number" id="umVanToc" placeholder="0" step="0.1" class="um-input" />
+          </div>
+        </div>`,
+
+      2: `<!-- Cây -->
+        <div class="um-section">
+          <label>Tên loài cây <span class="um-req">*</span></label>
+          <input type="text" id="umTenLoai" placeholder="VD: Cây xoài..." class="um-input" />
+        </div>
+        <div class="um-section um-row">
+          <div class="um-col">
+            <label>Chiều cao (m)</label>
+            <input type="number" id="umCayHeight" placeholder="0" step="0.1" class="um-input" />
+          </div>
+          <div class="um-col">
+            <label>Đường kính (m)</label>
+            <input type="number" id="umDuongKinh" placeholder="0" step="0.1" class="um-input" />
+          </div>
+          <div class="um-col">
+            <label>Tuổi (năm)</label>
+            <input type="number" id="umTuoi" placeholder="0" step="1" class="um-input" />
+          </div>
+        </div>`,
+
+      3: `<!-- Công trình -->
+        <div class="um-section">
+          <label>Tên công trình <span class="um-req">*</span></label>
+          <input type="text" id="umTenCongTrinh" placeholder="VD: Tòa nhà A..." class="um-input" />
+        </div>
+        <div class="um-section um-row">
+          <div class="um-col">
+            <label>Loại công trình</label>
+            <select id="umLoaiCongTrinh" class="um-select">
+              <option value="NHA">Nhà</option>
+              <option value="CAU">Cầu</option>
+              <option value="CANG">Cảng</option>
+              <option value="TRAM">Trạm</option>
+            </select>
+          </div>
+          <div class="um-col">
+            <label>Cấp bảo mật</label>
+            <select id="umCapBaoMat" class="um-select">
+              <option value="0">Công khai</option>
+              <option value="1">Hạn chế</option>
+              <option value="2">Tí mật</option>
+            </select>
+          </div>
+        </div>`,
+    };
+
+    container.innerHTML = templates[loai] || "";
   }
 
+  // ─────────────────────────────────────────
+  // Preview: load từ file blob (user chọn file)
+  // ─────────────────────────────────────────
+  async loadPreviewFromBlob(file) {
+    try {
+      this.clearPreviewModel();
+      const blobUrl = URL.createObjectURL(file);
+      await this.loadModelAtPosition(blobUrl);
+      this.showNotification("Preview model đã tải", "success");
+    } catch (err) {
+      console.error("❌ preview blob:", err);
+      this.showNotification("Lỗi tải preview", "error");
+    }
+  }
+
+  // Preview: load từ server dựa loại mô hình đã chọn
+  async loadPreviewFromServer() {
+    const loaiId = document.getElementById("umLoaiMoHinhSelect").value;
+    if (!loaiId) return;
+
+    try {
+      this.clearPreviewModel();
+      const res = await fetch(
+        `http://localhost:8000/api/model-types/${loaiId}/`,
+      );
+      const data = await res.json();
+      if (data.success && data.data.url_glb) {
+        const url = `http://localhost:8000/media/${data.data.url_glb}`;
+        await this.loadModelAtPosition(url);
+        this.showNotification("Preview model đã tải từ server", "success");
+      }
+    } catch (err) {
+      console.error("❌ preview server:", err);
+    }
+  }
+
+  async loadModelAtPosition(url) {
+    const { lon, lat, height } = this.selectedCoords;
+    const position = Cartesian3.fromDegrees(lon, lat, height);
+    const hpr = new HeadingPitchRoll(0, 0, 0);
+    const modelMatrix = Transforms.headingPitchRollToFixedFrame(position, hpr);
+    const scale = parseFloat(document.getElementById("umScale").value) || 1;
+    Matrix4.multiplyByUniformScale(modelMatrix, scale, modelMatrix);
+
+    this.previewModel = await Model.fromGltfAsync({
+      url,
+      modelMatrix,
+      silhouetteColor: Color.CYAN,
+      silhouetteSize: 2.0,
+    });
+    this.previewModel.color = Color.fromAlpha(Color.WHITE, 0.7);
+    this.viewer.scene.primitives.add(this.previewModel);
+  }
+
+  // ─────────────────────────────────────────
+  // Áp dụng rotation + scale lên preview
+  // ─────────────────────────────────────────
   applyRotationToPreview() {
     if (!this.previewModel) return;
 
-    const lon = parseFloat(document.getElementById("coordLon").value);
-    const lat = parseFloat(document.getElementById("coordLat").value);
-    const height = parseFloat(document.getElementById("coordHeight").value);
-
+    const { lon, lat, height } = this.selectedCoords;
     const position = Cartesian3.fromDegrees(lon, lat, height);
-
-    const heading = CesiumMath.toRadians(this.currentRotation.heading);
-    const pitch = CesiumMath.toRadians(this.currentRotation.pitch);
-    const roll = CesiumMath.toRadians(this.currentRotation.roll);
-
-    const hpr = new HeadingPitchRoll(heading, pitch, roll);
-
+    const hpr = new HeadingPitchRoll(
+      CesiumMath.toRadians(this.currentRotation.heading),
+      CesiumMath.toRadians(this.currentRotation.pitch),
+      CesiumMath.toRadians(this.currentRotation.roll),
+    );
     const modelMatrix = Transforms.headingPitchRollToFixedFrame(position, hpr);
-
-    const scale = parseFloat(document.getElementById("modelScale").value);
+    const scale = parseFloat(document.getElementById("umScale").value) || 1;
     Matrix4.multiplyByUniformScale(modelMatrix, scale, modelMatrix);
 
     this.previewModel.modelMatrix = modelMatrix;
   }
 
+  // ─────────────────────────────────────────
+  // SUBMIT -> POST /api/doi-tuong/create/
+  // ─────────────────────────────────────────
+  async submitModel() {
+    // ── Validate chung ──
+    const canhId = document.getElementById("umCanhSelect").value;
+    const loaiMoHinhId = document.getElementById("umLoaiMoHinhSelect").value;
+    const loaiDoiTuong = document.getElementById("umLoaiDoiTuong").value;
+
+    if (!canhId) {
+      this.showNotification("Chọn cảnh", "error");
+      return;
+    }
+    if (!loaiMoHinhId) {
+      this.showNotification("Chọn loại mô hình", "error");
+      return;
+    }
+    if (!loaiDoiTuong) {
+      this.showNotification("Chọn loại đối tượng", "error");
+      return;
+    }
+
+    // ── Validate form con ──
+    if (!this.validateDynamicForm(loaiDoiTuong)) return;
+
+    // ── Build FormData ──
+    const formData = new FormData();
+    formData.append("ma_canh_id", canhId);
+    formData.append("ma_loai_mo_hinh_id", loaiMoHinhId);
+    formData.append("loai_doi_tuong", loaiDoiTuong);
+    formData.append("lat", this.selectedCoords.lat);
+    formData.append("lon", this.selectedCoords.lon);
+    formData.append("height", this.selectedCoords.height);
+    formData.append("heading", this.currentRotation.heading);
+    formData.append("pitch", this.currentRotation.pitch);
+    formData.append("roll", this.currentRotation.roll);
+    formData.append("scale", document.getElementById("umScale").value);
+
+    // Thêm fields theo loại
+    this.appendDynamicFields(formData, loaiDoiTuong);
+
+    // ── Submit ──
+    document.getElementById("umSubmitText").textContent = "⏳ Đang gửi...";
+    document.getElementById("umSubmit").disabled = true;
+
+    try {
+      const res = await fetch("http://localhost:8000/api/doi-tuong/create/", {
+        method: "POST",
+        body: formData,
+        headers: { "X-CSRFToken": this.getCsrfToken() },
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        this.showNotification("✅ Đã thêm model thành công!", "success");
+        // Model đã có trên map (preview) -> chỉ cần xóa silhouette / giữ model
+        this.finalizePreview();
+        this.closeModal();
+      } else {
+        this.showNotification("Lỗi: " + (data.error || "Unknown"), "error");
+      }
+    } catch (err) {
+      console.error("❌ submit:", err);
+      this.showNotification("Lỗi mạng: " + err.message, "error");
+    } finally {
+      document.getElementById("umSubmitText").textContent = "✓ Thêm Model";
+      document.getElementById("umSubmit").disabled = false;
+    }
+  }
+
+  // Validate fields trong form con
+  validateDynamicForm(loai) {
+    if (loai === "1") {
+      const ten = document.getElementById("umTenDoiTuong")?.value.trim();
+      if (!ten) {
+        this.showNotification("Nhập tên đối tượng", "error");
+        return false;
+      }
+    }
+    if (loai === "2") {
+      const ten = document.getElementById("umTenLoai")?.value.trim();
+      if (!ten) {
+        this.showNotification("Nhập tên loài cây", "error");
+        return false;
+      }
+    }
+    if (loai === "3") {
+      const ten = document.getElementById("umTenCongTrinh")?.value.trim();
+      if (!ten) {
+        this.showNotification("Nhập tên công trình", "error");
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Append fields theo loại đối tượng
+  appendDynamicFields(formData, loai) {
+    if (loai === "1") {
+      formData.append(
+        "loai_DT",
+        document.getElementById("umLoaiDT")?.value || "UNKNOWN",
+      );
+      formData.append(
+        "ten_doi_tuong",
+        document.getElementById("umTenDoiTuong")?.value.trim(),
+      );
+      const duong = document.getElementById("umDuongCDong")?.value.trim();
+      if (duong) formData.append("duong_chuyen_dong", duong);
+      const vt = document.getElementById("umVanToc")?.value;
+      if (vt) formData.append("van_toc", vt);
+    }
+    if (loai === "2") {
+      formData.append(
+        "ten_loai",
+        document.getElementById("umTenLoai")?.value.trim(),
+      );
+      const h = document.getElementById("umCayHeight")?.value;
+      if (h) formData.append("cay_height", h);
+      const dk = document.getElementById("umDuongKinh")?.value;
+      if (dk) formData.append("duong_kinh", dk);
+      const t = document.getElementById("umTuoi")?.value;
+      if (t) formData.append("tuoi", t);
+    }
+    if (loai === "3") {
+      formData.append(
+        "ten_cong_trinh",
+        document.getElementById("umTenCongTrinh")?.value.trim(),
+      );
+      formData.append(
+        "loai_cong_trinh",
+        document.getElementById("umLoaiCongTrinh")?.value || "NHA",
+      );
+      formData.append(
+        "cap_bao_mat",
+        document.getElementById("umCapBaoMat")?.value || "0",
+      );
+    }
+  }
+
+  // Sau submit thành công: giữ model trên map, xóa silhouette
+  finalizePreview() {
+    if (this.previewModel) {
+      this.previewModel.silhouetteSize = 0;
+      this.previewModel.color = Color.WHITE;
+      this.previewModel = null; // không quản lý nữa, để nó tồn tại trên scene
+    }
+    this.removeMarker();
+  }
+
+  // ─────────────────────────────────────────
+  // Show / Close modal
+  // ─────────────────────────────────────────
+  showModal() {
+    document.getElementById("uploadModal").style.display = "flex";
+  }
+
+  closeModal() {
+    document.getElementById("uploadModal").style.display = "none";
+    this.clearPreview();
+  }
+
+  // ─────────────────────────────────────────
+  // Cleanup helpers
+  // ─────────────────────────────────────────
+  resetState() {
+    this.selectedCoords = { lon: null, lat: null, height: null };
+    this.currentRotation = { heading: 0, pitch: 0, roll: 0 };
+    this.selectedGlbFile = null;
+    this.clearPreview();
+
+    // Reset form fields
+    const ids = [
+      "umScale",
+      "umValHeading",
+      "umValPitch",
+      "umValRoll",
+      "umSliderHeading",
+      "umSliderPitch",
+      "umSliderRoll",
+    ];
+    const defaults = ["1", "0", "0", "0", "0", "0", "0"];
+    ids.forEach((id, i) => {
+      const el = document.getElementById(id);
+      if (el) el.value = defaults[i];
+    });
+
+    const selects = ["umCanhSelect", "umLoaiMoHinhSelect", "umLoaiDoiTuong"];
+    selects.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
+
+    document.getElementById("umDynamicForm").innerHTML = "";
+    document.getElementById("umGlbFileName").textContent = "Chọn file .glb";
+    document.getElementById("umGlbFile").value = "";
+  }
+
   clearPreview() {
+    this.clearPreviewModel();
+    this.removeMarker();
+  }
+
+  clearPreviewModel() {
     if (this.previewModel) {
       this.viewer.scene.primitives.remove(this.previewModel);
       this.previewModel = null;
     }
-
-    if (this.rotationGizmo) {
-      this.viewer.entities.remove(this.rotationGizmo);
-      this.rotationGizmo = null;
-    }
-
-    if (this.rotationHandler) {
-      this.rotationHandler.destroy();
-      this.rotationHandler = null;
-    }
-
-    this.isRotating = false;
-    this.currentRotation = { heading: 0, pitch: 0, roll: 0 };
   }
 
-  closeModal() {
-    const modal = document.getElementById("uploadModal");
-    modal.style.display = "none";
-    this.clearPreview();
-    this.enableMapInteraction();
-
-    // Reset lại trạng thái chọn vị trí nếu đang chọn
-    if (this.isSelectingLocation) {
-      this.isSelectingLocation = false;
-      if (this.handler) {
-        this.handler.removeInputAction(ScreenSpaceEventType.LEFT_CLICK);
-      }
-    }
-  }
-
-  async submitUpload() {
-    const glbFile = document.getElementById("glbFile").files[0];
-    const modelName = document.getElementById("modelName").value.trim();
-    const modelScale = parseFloat(document.getElementById("modelScale").value);
-    const lon = parseFloat(document.getElementById("coordLon").value);
-    const lat = parseFloat(document.getElementById("coordLat").value);
-    const height = parseFloat(document.getElementById("coordHeight").value);
-
-    // Get rotation in degrees
-    const heading = parseFloat(
-      document.getElementById("rotationHeadingValue").value,
-    );
-    const pitch = parseFloat(
-      document.getElementById("rotationPitchValue").value,
-    );
-    const roll = parseFloat(document.getElementById("rotationRollValue").value);
-
-    if (!lon || !lat) {
-      this.showError("❌ Vui lòng chọn vị trí trên bản đồ");
-      this.showNotification("Vui lòng chọn vị trí trên bản đồ", "error");
-      return;
-    }
-
-    if (!glbFile) {
-      this.showError("❌ Vui lòng chọn file .glb");
-      this.showNotification("Vui lòng chọn file .glb", "error");
-      return;
-    }
-
-    if (!modelName) {
-      this.showError("❌ Vui lòng nhập tên model");
-      this.showNotification("Vui lòng nhập tên model", "error");
-      return;
-    }
-
-    if (!glbFile.name.endsWith(".glb")) {
-      this.showError("❌ Chỉ chấp nhận file .glb");
-      this.showNotification("Chỉ chấp nhận file định dạng .glb", "error");
-      return;
-    }
-
-    this.showNotification(`Đang upload: ${modelName}`, "info");
-    this.uploadModel(
-      glbFile,
-      modelName,
-      lon,
-      lat,
-      height,
-      modelScale,
-      heading,
-      pitch,
-      roll,
-    );
-  }
-
-  async uploadModel(file, name, lon, lat, height, scale, heading, pitch, roll) {
-    const statusDiv = document.getElementById("uploadStatus");
-    const submitBtn = document.getElementById("btnUploadSubmit");
-
-    try {
-      this.isUploading = true;
-
-      statusDiv.innerHTML = '<p class="loading">⏳ Đang upload...</p>';
-      submitBtn.disabled = true;
-
-      const formData = new FormData();
-      formData.append("glb_file", file);
-      formData.append("model_name", name);
-      formData.append("lon", lon);
-      formData.append("lat", lat);
-      formData.append("height", height);
-      formData.append("scale", scale);
-      formData.append("rotation_x", pitch);
-      formData.append("rotation_y", roll);
-      formData.append("rotation_z", heading);
-
-      this.showNotification("Đang gửi dữ liệu lên server...", "info");
-
-      const response = await fetch("http://localhost:8000/api/upload-glb/", {
-        method: "POST",
-        body: formData,
-        headers: {
-          "X-CSRFToken": this.getCsrfToken(),
-        },
-      });
-
-      const contentType = response.headers.get("content-type");
-
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text();
-        console.error("❌ Response không phải JSON:", text);
-        this.showError(
-          `❌ Server Error: ${response.status} ${response.statusText}`,
-        );
-        this.showNotification("Lỗi server: Phản hồi không hợp lệ", "error");
-        return;
-      }
-
-      const data = await response.json();
-
-      if (response.ok) {
-        this.showNotification(`✅ Upload thành công: ${name}`, "success");
-        statusDiv.innerHTML = '<p class="success">✅ Upload thành công!</p>';
-
-        setTimeout(() => {
-          this.clearPreview();
-          this.loadModelRealtime(
-            data,
-            lon,
-            lat,
-            height,
-            scale,
-            heading,
-            pitch,
-            roll,
-          );
-
-          setTimeout(() => {
-            this.closeModal();
-            this.isUploading = false;
-          }, 1000);
-        }, 500);
-      } else {
-        console.error("❌ Upload failed:", data);
-        this.showError(data.message || `❌ Lỗi: ${data.error}`);
-        this.showNotification(
-          `Upload thất bại: ${data.error || "Lỗi không xác định"}`,
-          "error",
-        );
-        this.isUploading = false;
-      }
-    } catch (error) {
-      console.error("❌ Network error:", error);
-      this.showError(`❌ Lỗi: ${error.message}`);
-      this.showNotification(`Lỗi mạng: ${error.message}`, "error");
-      this.isUploading = false;
-    } finally {
-      submitBtn.disabled = false;
-    }
-  }
-
-  async loadModelRealtime(
-    modelData,
-    lon,
-    lat,
-    height,
-    scale,
-    heading,
-    pitch,
-    roll,
-  ) {
-    try {
-      this.showNotification("Đang tải model lên bản đồ...", "info");
-
-      const position = Cartesian3.fromDegrees(lon, lat, height);
-
-      const hpr = new HeadingPitchRoll(
-        CesiumMath.toRadians(heading),
-        CesiumMath.toRadians(pitch),
-        CesiumMath.toRadians(roll),
-      );
-
-      const modelMatrix = Transforms.headingPitchRollToFixedFrame(
-        position,
-        hpr,
-      );
-      Matrix4.multiplyByUniformScale(modelMatrix, scale, modelMatrix);
-
-      const model = await Model.fromGltfAsync({
-        url: `http://localhost:8000${modelData.url}`,
-        modelMatrix: modelMatrix,
-      });
-
-      this.viewer.scene.primitives.add(model);
-      this.showNotification("Model đã được tải thành công!", "success");
-
-      // Không zoom tự động - model chỉ hiển thị tại vị trí đã chọn
-    } catch (error) {
-      console.error("❌ Error loading model realtime:", error);
-      this.showNotification("Lỗi khi tải model lên bản đồ", "error");
-    }
-  }
-
-  showError(message) {
-    const statusDiv = document.getElementById("uploadStatus");
-    statusDiv.innerHTML = `<p class="error">${message}</p>`;
-  }
-
+  // ─────────────────────────────────────────
+  // CSRF token
+  // ─────────────────────────────────────────
   getCsrfToken() {
     const name = "csrftoken";
-    let cookieValue = null;
-
-    if (document.cookie && document.cookie !== "") {
-      const cookies = document.cookie.split(";");
-      for (let cookie of cookies) {
-        cookie = cookie.trim();
-        if (cookie.substring(0, name.length + 1) === name + "=") {
-          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-          break;
-        }
+    if (document.cookie) {
+      for (const cookie of document.cookie.split(";")) {
+        const c = cookie.trim();
+        if (c.startsWith(name + "="))
+          return decodeURIComponent(c.slice(name.length + 1));
       }
     }
+    return "";
+  }
 
-    if (!cookieValue) {
-      const csrfElement = document.querySelector(
-        '[name="csrfmiddlewaretoken"]',
-      );
-      if (csrfElement) {
-        cookieValue = csrfElement.value;
-      }
-    }
+  // ─────────────────────────────────────────
+  // Notification (reuse pattern từ code cũ)
+  // ─────────────────────────────────────────
+  showNotification(message, type = "info") {
+    // Xóa notification cũ
+    document.querySelectorAll(".um-notification").forEach((n) => n.remove());
 
-    return cookieValue || "";
+    const colors = {
+      success: "#4CAF50",
+      error: "#f44336",
+      info: "#2196F3",
+      warning: "#ff9800",
+    };
+    const n = document.createElement("div");
+    n.className = "um-notification";
+    n.textContent = message;
+    n.style.cssText = `
+      position:fixed; top:16px; right:16px; background:${
+        colors[type] || colors.info
+      };
+      color:#fff; padding:10px 18px; border-radius:6px; z-index:20000;
+      font-size:14px; box-shadow:0 2px 8px rgba(0,0,0,.25);
+      animation: umSlideIn .25s ease;
+      max-width:320px;
+    `;
+    document.body.appendChild(n);
+    setTimeout(() => n.remove(), 3000);
   }
 }
 

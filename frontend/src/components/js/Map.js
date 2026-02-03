@@ -39,56 +39,59 @@ class LODManager {
   // ✅ Tải danh sách cảnh từ backend
   async initScenes() {
     try {
-      console.log('🔄 Đang tải danh sách cảnh từ backend...');
-      
+      console.log("🔄 Đang tải danh sách cảnh từ backend...");
+
       const response = await fetch(`${this.backendUrl}/QLModel/api/scenes/`);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         this.scenes = data.scenes;
         console.log(`✅ Đã tải ${data.count} cảnh từ backend:`, this.scenes);
-        
+
         // Thiết lập các nút LOD dựa trên danh sách cảnh
         this.setupLODButtons();
-        
+
         return true;
       } else {
-        console.error('❌ Lỗi khi tải danh sách cảnh:', data.error);
-        this.showNotification('Không thể tải danh sách cảnh từ backend', 'error');
+        console.error("❌ Lỗi khi tải danh sách cảnh:", data.error);
+        this.showNotification(
+          "Không thể tải danh sách cảnh từ backend",
+          "error",
+        );
         return false;
       }
     } catch (error) {
-      console.error('❌ Lỗi khi kết nối backend:', error);
-      this.showNotification('Lỗi kết nối backend: ' + error.message, 'error');
+      console.error("❌ Lỗi khi kết nối backend:", error);
+      this.showNotification("Lỗi kết nối backend: " + error.message, "error");
       return false;
     }
   }
 
   setupLODButtons() {
     // Tạo mapping động dựa trên danh sách cảnh
-    this.scenes.forEach(scene => {
+    this.scenes.forEach((scene) => {
       const buttonId = `btnLoD${scene.ma_canh}`;
       const button = document.getElementById(buttonId);
-      
+
       if (button) {
         // Xóa event listener cũ nếu có
         const newButton = button.cloneNode(true);
         button.parentNode.replaceChild(newButton, button);
-        
+
         // Gán sự kiện click mới
-        newButton.addEventListener('click', () => {
+        newButton.addEventListener("click", () => {
           this.switchToLOD(scene.ma_canh);
         });
-        
+
         // Cập nhật tooltip
         newButton.title = `Chuyển sang ${scene.ten_canh}`;
-        newButton.classList.add('lod-button');
-        
+        newButton.classList.add("lod-button");
+
         console.log(`✅ Đã thiết lập nút ${buttonId} cho ${scene.ten_canh}`);
       } else {
         console.warn(`⚠️ Không tìm thấy nút ${buttonId} trong HTML`);
@@ -100,15 +103,15 @@ class LODManager {
   async switchToLOD(ma_canh) {
     // Kiểm tra nếu đang tải
     if (this.isLoading) {
-      console.log('⏳ Đang tải cảnh, vui lòng đợi...');
-      this.showNotification('Đang tải cảnh, vui lòng đợi...', 'warning');
+      console.log("⏳ Đang tải cảnh, vui lòng đợi...");
+      this.showNotification("Đang tải cảnh, vui lòng đợi...", "warning");
       return;
     }
 
     // Kiểm tra nếu đã ở cảnh này
     if (ma_canh === this.currentLOD) {
       console.log(`✓ Đã ở cảnh ${ma_canh}`);
-      this.showNotification(`Đã ở cảnh ${ma_canh}`, 'info');
+      this.showNotification(`Đã ở cảnh ${ma_canh}`, "info");
       return;
     }
 
@@ -117,7 +120,7 @@ class LODManager {
       console.log(`🔄 Đang chuyển sang cảnh ${ma_canh}...`);
 
       // Tìm thông tin cảnh
-      const scene = this.scenes.find(s => s.ma_canh === ma_canh);
+      const scene = this.scenes.find((s) => s.ma_canh === ma_canh);
       if (!scene) {
         throw new Error(`Không tìm thấy cảnh ${ma_canh} trong danh sách`);
       }
@@ -141,11 +144,13 @@ class LODManager {
       this.updateLODButtonStates(ma_canh);
 
       console.log(`✅ Đã chuyển sang cảnh ${ma_canh} thành công`);
-      this.showNotification(`✓ Đã tải thành công ${scene.ten_canh}`, 'success');
-      
+      this.showNotification(`✓ Đã tải thành công ${scene.ten_canh}`, "success");
     } catch (error) {
       console.error(`❌ Lỗi khi chuyển sang cảnh ${ma_canh}:`, error);
-      this.showNotification(`Lỗi khi tải cảnh ${ma_canh}: ${error.message}`, 'error');
+      this.showNotification(
+        `Lỗi khi tải cảnh ${ma_canh}: ${error.message}`,
+        "error",
+      );
     } finally {
       this.isLoading = false;
     }
@@ -160,13 +165,16 @@ class LODManager {
 
     try {
       console.log(`🌍 Đang tải terrain từ DB: ${scene.url_terrain}`);
-      
-      this.showNotification(`Đang tải terrain ${scene.ten_canh}...`, 'info');
 
-      const terrainProvider = await CesiumTerrainProvider.fromUrl(scene.url_terrain, {
-        requestVertexNormals: true,
-        requestWaterMask: true,
-      });
+      this.showNotification(`Đang tải terrain ${scene.ten_canh}...`, "info");
+
+      const terrainProvider = await CesiumTerrainProvider.fromUrl(
+        scene.url_terrain,
+        {
+          requestVertexNormals: true,
+          requestWaterMask: true,
+        },
+      );
 
       if (terrainProvider.readyPromise) {
         await terrainProvider.readyPromise;
@@ -176,7 +184,6 @@ class LODManager {
       this.viewer.scene.globe.depthTestAgainstTerrain = true;
 
       console.log(`✅ Terrain ${scene.ten_canh} đã sẵn sàng`);
-      
     } catch (error) {
       console.error(`❌ Lỗi khi tải terrain:`, error);
       throw error;
@@ -186,23 +193,27 @@ class LODManager {
   // ✅ Di chuyển camera đến vị trí cảnh (TỪ DB)
   async moveCameraToScene(scene) {
     if (!scene.camera) {
-      console.warn(`⚠️ Cảnh ${scene.ma_canh} không có thông tin camera trong DB`);
+      console.warn(
+        `⚠️ Cảnh ${scene.ma_canh} không có thông tin camera trong DB`,
+      );
       return;
     }
 
     try {
       const { lat, lon, height, heading, pitch, roll } = scene.camera;
-      
-      console.log(`📷 Di chuyển camera đến: lat=${lat}, lon=${lon}, height=${height}m`);
-      
+
+      console.log(
+        `📷 Di chuyển camera đến: lat=${lat}, lon=${lon}, height=${height}m`,
+      );
+
       await this.viewer.camera.flyTo({
         destination: Cartesian3.fromDegrees(lon, lat, height),
         orientation: {
           heading: CesiumMath.toRadians(heading || 0),
           pitch: CesiumMath.toRadians(pitch || -30),
-          roll: CesiumMath.toRadians(roll || 0)
+          roll: CesiumMath.toRadians(roll || 0),
         },
-        duration: 2.0 // 2 giây animation
+        duration: 2.0, // 2 giây animation
       });
 
       console.log(`✅ Camera đã di chuyển đến vị trí cảnh ${scene.ma_canh}`);
@@ -214,35 +225,37 @@ class LODManager {
   // ✅ Xóa tất cả model đã tải
   clearLoadedModels() {
     console.log(`🗑️ Đang xóa ${this.loadedModels.length} model cũ...`);
-    
-    this.loadedModels.forEach(model => {
+
+    this.loadedModels.forEach((model) => {
       try {
         this.viewer.scene.primitives.remove(model);
       } catch (error) {
-        console.warn('Lỗi khi xóa model:', error);
+        console.warn("Lỗi khi xóa model:", error);
       }
     });
-    
+
     this.loadedModels = [];
-    console.log('✅ Đã xóa tất cả model cũ');
+    console.log("✅ Đã xóa tất cả model cũ");
   }
 
   // ✅ FIXED: Tải các model cho cảnh - SỬA URL ĐÃ ĐÚNG
   async loadModelsForScene(ma_canh) {
     try {
       console.log(`🔄 Đang tải model cho cảnh ${ma_canh}...`);
-      
+
       // ✅ FIXED: Thêm /QLModel/ vào đầu URL
-      const response = await fetch(`${this.backendUrl}/QLModel/api/scenes/${ma_canh}/models/`);
-      
+      const response = await fetch(
+        `${this.backendUrl}/QLModel/api/scenes/${ma_canh}/models/`,
+      );
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (!data.success) {
-        throw new Error(data.error || 'Không thể tải danh sách model');
+        throw new Error(data.error || "Không thể tải danh sách model");
       }
 
       const models = data.models || [];
@@ -250,7 +263,7 @@ class LODManager {
 
       if (models.length === 0) {
         console.log(`ℹ️ Cảnh ${ma_canh} không có model`);
-        this.showNotification(`Cảnh ${ma_canh} không có model`, 'info');
+        this.showNotification(`Cảnh ${ma_canh} không có model`, "info");
         return;
       }
 
@@ -271,17 +284,24 @@ class LODManager {
         }
       }
 
-      console.log(`✅ Đã tải ${loadedCount}/${models.length} model cho cảnh ${ma_canh}`);
-      
-      if (errorCount > 0) {
-        this.showNotification(`Đã tải ${loadedCount} model, ${errorCount} lỗi`, 'warning');
-      } else if (loadedCount > 0) {
-        this.showNotification(`Đã tải ${loadedCount} model thành công`, 'success');
-      }
+      console.log(
+        `✅ Đã tải ${loadedCount}/${models.length} model cho cảnh ${ma_canh}`,
+      );
 
+      if (errorCount > 0) {
+        this.showNotification(
+          `Đã tải ${loadedCount} model, ${errorCount} lỗi`,
+          "warning",
+        );
+      } else if (loadedCount > 0) {
+        this.showNotification(
+          `Đã tải ${loadedCount} model thành công`,
+          "success",
+        );
+      }
     } catch (error) {
       console.error(`❌ Lỗi khi tải model cho cảnh ${ma_canh}:`, error);
-      this.showNotification(`Lỗi: ${error.message}`, 'error');
+      this.showNotification(`Lỗi: ${error.message}`, "error");
     }
   }
 
@@ -290,14 +310,14 @@ class LODManager {
     try {
       // Kiểm tra dữ liệu model
       if (!modelData.position) {
-        console.warn('⚠️ Model thiếu thông tin vị trí:', modelData);
+        console.warn("⚠️ Model thiếu thông tin vị trí:", modelData);
         return null;
       }
 
       const { position, orientation, scale, url_glb } = modelData;
 
       if (!url_glb) {
-        console.warn('⚠️ Model không có URL GLB:', modelData);
+        console.warn("⚠️ Model không có URL GLB:", modelData);
         return null;
       }
 
@@ -305,20 +325,22 @@ class LODManager {
       const cartesianPosition = Cartesian3.fromDegrees(
         position.lon,
         position.lat,
-        position.height || 0
+        position.height || 0,
       );
 
       // Tạo orientation (HPR - Heading, Pitch, Roll)
-      const hpr = orientation ? new HeadingPitchRoll(
-        CesiumMath.toRadians(orientation.heading || 0),
-        CesiumMath.toRadians(orientation.pitch || 0),
-        CesiumMath.toRadians(orientation.roll || 0)
-      ) : new HeadingPitchRoll(0, 0, 0);
+      const hpr = orientation
+        ? new HeadingPitchRoll(
+            CesiumMath.toRadians(orientation.heading || 0),
+            CesiumMath.toRadians(orientation.pitch || 0),
+            CesiumMath.toRadians(orientation.roll || 0),
+          )
+        : new HeadingPitchRoll(0, 0, 0);
 
       // Tạo model matrix
       const modelMatrix = Transforms.headingPitchRollToFixedFrame(
         cartesianPosition,
-        hpr
+        hpr,
       );
 
       // Tải model GLB
@@ -334,7 +356,6 @@ class LODManager {
 
       console.log(`✅ Đã tải model ${modelData.id} từ ${url_glb}`);
       return model;
-
     } catch (error) {
       console.error(`❌ Lỗi khi tải model:`, error);
       throw error;
@@ -342,18 +363,18 @@ class LODManager {
   }
 
   updateLODButtonStates(activeLOD) {
-    this.scenes.forEach(scene => {
+    this.scenes.forEach((scene) => {
       const buttonId = `btnLoD${scene.ma_canh}`;
       const button = document.getElementById(buttonId);
-      
+
       if (button) {
         if (scene.ma_canh === activeLOD) {
           // Nút đang active
-          button.classList.add('active-lod');
-          button.style.backgroundColor = '#4CAF50';
-          button.style.color = 'white';
-          button.style.border = '2px solid #2E7D32';
-          button.style.fontWeight = 'bold';
+          button.classList.add("active-lod");
+          button.style.backgroundColor = "#4CAF50";
+          button.style.color = "white";
+          button.style.border = "2px solid #2E7D32";
+          button.style.fontWeight = "bold";
         } else {
           button.classList.remove("active-lod");
           button.style.backgroundColor = "#f5f5f5";
@@ -367,22 +388,24 @@ class LODManager {
 
   // Lấy thông tin về cảnh hiện tại
   getCurrentLODInfo() {
-    const currentScene = this.scenes.find(s => s.ma_canh === this.currentLOD);
-    
+    const currentScene = this.scenes.find((s) => s.ma_canh === this.currentLOD);
+
     return {
       level: this.currentLOD,
       scene: currentScene,
-      description: currentScene ? currentScene.mo_ta || currentScene.ten_canh : 'Không xác định',
+      description: currentScene
+        ? currentScene.mo_ta || currentScene.ten_canh
+        : "Không xác định",
       isLoading: this.isLoading,
-      modelCount: this.loadedModels.length
+      modelCount: this.loadedModels.length,
     };
   }
 
   // Hiển thị thông báo
-  showNotification(message, type = 'info') {
+  showNotification(message, type = "info") {
     console.log(`${type.toUpperCase()}: ${message}`);
 
-    const notification = document.createElement('div');
+    const notification = document.createElement("div");
     notification.className = `lod-notification lod-notification-${type}`;
     notification.textContent = message;
     notification.style.cssText = `
@@ -411,7 +434,7 @@ class LODManager {
     `;
 
     document.body.appendChild(notification);
-    
+
     setTimeout(() => {
       if (notification.parentNode) {
         notification.style.opacity = "0";
@@ -439,11 +462,11 @@ export default {
       modelManager: null,
       uploadModelHandler: null,
       uploadI3DM: null,
-      lodManager: null, 
-      
+      lodManager: null,
+
       // Backend URL
       backendUrl: "http://localhost:8000",
-      
+
       // attribute (bảng thuộc tính)
       attrHandler: null,
       attrActive: false,
@@ -477,29 +500,33 @@ export default {
         // 1. KHỞI TẠO LOD MANAGER
         this.lodManager = new LODManager(this.viewer, this.backendUrl);
         console.log("✅ LOD Manager đã khởi tạo");
-        
+
         // 2. TẢI DANH SÁCH CẢNH TỪ BACKEND
         const scenesLoaded = await this.lodManager.initScenes();
-        
+
         if (!scenesLoaded) {
-          throw new Error('Không thể tải danh sách cảnh từ backend');
+          throw new Error("Không thể tải danh sách cảnh từ backend");
         }
 
         // 3. TẢI CẢNH MẶC ĐỊNH TỪ API
         const defaultScene = await this.loadDefaultScene();
-        
+
         if (defaultScene && defaultScene.ma_canh !== undefined) {
-          console.log(`📍 Tải cảnh mặc định: Cảnh ${defaultScene.ma_canh} - ${defaultScene.ten_canh}`);
+          console.log(
+            `📍 Tải cảnh mặc định: Cảnh ${defaultScene.ma_canh} - ${defaultScene.ten_canh}`,
+          );
           await this.lodManager.switchToLOD(defaultScene.ma_canh);
         } else {
-          console.warn('⚠️ Không tìm thấy cảnh mặc định, thử tải cảnh đầu tiên');
-          
+          console.warn(
+            "⚠️ Không tìm thấy cảnh mặc định, thử tải cảnh đầu tiên",
+          );
+
           // Fallback: tải cảnh đầu tiên trong danh sách
           if (this.lodManager.scenes.length > 0) {
             const firstScene = this.lodManager.scenes[0];
             await this.lodManager.switchToLOD(firstScene.ma_canh);
           } else {
-            throw new Error('Không có cảnh nào trong hệ thống');
+            throw new Error("Không có cảnh nào trong hệ thống");
           }
         }
 
@@ -519,7 +546,7 @@ export default {
         this.uploadModelHandler = new UploadModelHandler(this.viewer);
         console.log("✅ UploadModelHandler initialized");
         window.uploadModelHandler = this.uploadModelHandler;
-
+        window.__uploadHandler = this.uploadModelHandler;
         // 8. Khởi tạo UploadI3DM
         this.uploadI3DM = new UploadI3DM(this.viewer);
         console.log("✅ UploadI3DM initialized");
@@ -532,7 +559,6 @@ export default {
         }
 
         console.log("✅ Cesium đã khởi tạo hoàn toàn");
-
       } catch (error) {
         console.error("❌ Lỗi khi khởi tạo Cesium:", error);
         this.showNotification("Lỗi khởi tạo Cesium: " + error.message, "error");
@@ -545,25 +571,27 @@ export default {
        ========================= */
     async loadDefaultScene() {
       try {
-        console.log('🔄 Đang tải cảnh mặc định từ API...');
-        
-        const response = await fetch(`${this.backendUrl}/QLModel/api/scenes/default/`);
-        
+        console.log("🔄 Đang tải cảnh mặc định từ API...");
+
+        const response = await fetch(
+          `${this.backendUrl}/QLModel/api/scenes/default/`,
+        );
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (data.success && data.scene) {
-          console.log('✅ Đã tải cảnh mặc định:', data.scene);
+          console.log("✅ Đã tải cảnh mặc định:", data.scene);
           return data.scene;
         } else {
-          console.warn('⚠️ API không trả về cảnh mặc định:', data.error);
+          console.warn("⚠️ API không trả về cảnh mặc định:", data.error);
           return null;
         }
       } catch (error) {
-        console.error('❌ Lỗi khi tải cảnh mặc định:', error);
+        console.error("❌ Lỗi khi tải cảnh mặc định:", error);
         return null;
       }
     },
@@ -614,8 +642,11 @@ export default {
       btnLoD.addEventListener("click", (e) => {
         e.stopPropagation();
         e.preventDefault();
-        
-        if (panelLoD.style.display === "none" || panelLoD.style.display === "") {
+
+        if (
+          panelLoD.style.display === "none" ||
+          panelLoD.style.display === ""
+        ) {
           panelLoD.style.display = "flex";
           console.log("Panel LOD đã hiển thị");
         } else {
@@ -634,25 +665,29 @@ export default {
         }
       });
     },
-    
+
     showCurrentLODInfo() {
-      const oldDisplay = document.querySelector('.lod-info-display');
+      const oldDisplay = document.querySelector(".lod-info-display");
       if (oldDisplay) {
         oldDisplay.remove();
       }
-      
+
       const lodInfo = this.lodManager.getCurrentLODInfo();
-      
-      const display = document.createElement('div');
-      display.className = 'lod-info-display';
+
+      const display = document.createElement("div");
+      display.className = "lod-info-display";
       display.innerHTML = `
         <h4>📊 THÔNG TIN CẢNH HIỆN TẠI</h4>
-        <p><strong>Cảnh:</strong> ${lodInfo.level} - ${lodInfo.scene ? lodInfo.scene.ten_canh : 'N/A'}</p>
+        <p><strong>Cảnh:</strong> ${lodInfo.level} - ${
+        lodInfo.scene ? lodInfo.scene.ten_canh : "N/A"
+      }</p>
         <p><strong>Mô tả:</strong> ${lodInfo.description}</p>
         <p><strong>Số model:</strong> ${lodInfo.modelCount}</p>
-        <p><strong>Trạng thái:</strong> ${lodInfo.isLoading ? 'Đang tải...' : 'Đã tải ✓'}</p>
+        <p><strong>Trạng thái:</strong> ${
+          lodInfo.isLoading ? "Đang tải..." : "Đã tải ✓"
+        }</p>
       `;
-      
+
       display.style.cssText = `
         position: fixed;
         top: 80px;
@@ -664,9 +699,9 @@ export default {
         z-index: 9999;
         min-width: 300px;
       `;
-      
+
       document.body.appendChild(display);
-      
+
       setTimeout(() => {
         if (display.parentNode) {
           display.style.opacity = "0";
@@ -696,29 +731,29 @@ export default {
         this.measureActive = true;
         this.showNotification(
           "Chế độ đo chiều cao đã bật. Click 2 điểm để đo Δh.",
-          "info"
+          "info",
         );
       }
     },
 
     activateHeightMeasure() {
       this.measureHandler = new ScreenSpaceEventHandler(
-        this.viewer.scene.canvas
+        this.viewer.scene.canvas,
       );
 
       this.measureHandler.setInputAction(
         (click) => this.handleHeightClick(click),
-        ScreenSpaceEventType.LEFT_CLICK
+        ScreenSpaceEventType.LEFT_CLICK,
       );
 
       this.measureHandler.setInputAction(
         (movement) => this.handleHeightMouseMove(movement),
-        ScreenSpaceEventType.MOUSE_MOVE
+        ScreenSpaceEventType.MOUSE_MOVE,
       );
 
       this.measureHandler.setInputAction(
         () => this.cancelCurrentHeightMeasurement(),
-        ScreenSpaceEventType.RIGHT_CLICK
+        ScreenSpaceEventType.RIGHT_CLICK,
       );
     },
 
@@ -879,19 +914,19 @@ export default {
         this.locateActive = true;
         this.showNotification(
           "Chế độ lấy tọa độ đã bật. Click vào bản đồ!",
-          "info"
+          "info",
         );
       }
     },
 
     activateLocatePoint() {
       this.locateHandler = new ScreenSpaceEventHandler(
-        this.viewer.scene.canvas
+        this.viewer.scene.canvas,
       );
 
       this.locateHandler.setInputAction(
         (click) => this.handleCoordinateClick(click),
-        ScreenSpaceEventType.LEFT_CLICK
+        ScreenSpaceEventType.LEFT_CLICK,
       );
     },
 
@@ -1055,6 +1090,19 @@ export default {
       else alert("Viewshed đã tắt!");
     },
 
+    // ✅ Reload models cho cảnh đang hiện tại (gọi sau khi ObjectManager tạo model mới)
+    async reloadCurrentScene() {
+      if (this.lodManager && this.lodManager.currentLOD !== null) {
+        const currentLOD = this.lodManager.currentLOD;
+        // Reset currentLOD để switchToLOD không bỏ qua (vì nó check "đã ở cảnh này")
+        this.lodManager.currentLOD = null;
+        await this.lodManager.switchToLOD(currentLOD);
+        console.log("✅ Đã reload cảnh sau khi tạo model mới");
+      } else {
+        console.warn("⚠️ LODManager chưa có cảnh hiện tại để reload");
+      }
+    },
+
     showNotification(message, type = "info") {
       console.log(`${type.toUpperCase()}: ${message}`);
 
@@ -1111,9 +1159,9 @@ export default {
     if (this.measureHandler) this.measureHandler.destroy();
     if (this.locateHandler) this.locateHandler.destroy();
     if (this.attrHandler) this.attrHandler.destroy();
-    
+
     this.lodManager = null;
-    
+
     if (this.viewer && !this.viewer.isDestroyed()) {
       this.viewer.destroy();
     }

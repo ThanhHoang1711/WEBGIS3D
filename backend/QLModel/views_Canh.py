@@ -62,42 +62,64 @@ def get_models_by_scene(request, ma_canh):
     Endpoint: GET /api/scenes/<ma_canh>/models/
     """
     try:
+        from django.conf import settings
+
         # Kiểm tra cảnh tồn tại
         scene = Canh.objects.get(ma_canh=ma_canh)
-        
-        # Lấy tất cả loại mô hình thuộc cảnh
-        loai_mo_hinhs = LoaiMoHinh.objects.filter(ma_canh=scene)
-        
-        # Lấy tất cả mô hình thuộc các loại mô hình này
+
+        # ✅ FIX: Query trực tiếp MoHinh theo ma_canh, chỉ lấy trang_thai=1
+        mo_hinhs = MoHinh.objects.select_related(
+            'ma_vi_tri', 'ma_loai_mo_hinh'
+        ).filter(
+            ma_canh=scene,
+            trang_thai=1
+        )
+
+        # Base URL cho file media
+        MEDIA_URL = f"http://localhost:8000/media/"
+
         mo_hinhs_data = []
-        for loai_mh in loai_mo_hinhs:
-            mo_hinhs = MoHinh.objects.filter(ma_loai_mo_hinh=loai_mh)
-            
-            for mh in mo_hinhs:
-                vi_tri = mh.ma_vi_tri
-                mo_hinhs_data.append({
-                    'id': mh.id,
-                    'ma_doi_tuong': mh.ma_doi_tuong,
-                    'ma_canh': mh.ma_canh,
-                    'position': {
-                        'lat': vi_tri.lat,
-                        'lon': vi_tri.lon,
-                        'height': vi_tri.height
-                    } if vi_tri else None,
-                    'orientation': {
-                        'heading': vi_tri.heading,
-                        'pitch': vi_tri.pitch,
-                        'roll': vi_tri.roll
-                    } if vi_tri else None,
-                    'scale': vi_tri.scale if vi_tri else 1.0,
-                    'url_glb': loai_mh.url_glb,
-                    'url_b3dm': loai_mh.url_b3dm,
-                    'loai_mo_hinh': {
-                        'id': loai_mh.id,
-                        'loai_cap_nhat': loai_mh.loai_cap_nhat
-                    }
-                })
-        
+        for mh in mo_hinhs:
+            vi_tri = mh.ma_vi_tri
+            loai_mh = mh.ma_loai_mo_hinh
+
+            # Bỏ qua nếu không có vị trí hoặc không có loại mô hình (=> không có GLB)
+            if not vi_tri or not loai_mh:
+                continue
+
+            # ✅ FIX: Ghép full URL cho url_glb / url_b3dm
+            url_glb = None
+            if loai_mh.url_glb:
+                raw = loai_mh.url_glb.strip()
+                url_glb = raw if raw.startswith("http") else MEDIA_URL + raw
+
+            url_b3dm = None
+            if loai_mh.url_b3dm:
+                raw = loai_mh.url_b3dm.strip()
+                url_b3dm = raw if raw.startswith("http") else MEDIA_URL + raw
+
+            mo_hinhs_data.append({
+                'id': mh.id,
+                'ma_canh': ma_canh,
+                'position': {
+                    'lat': float(vi_tri.lat),
+                    'lon': float(vi_tri.lon),
+                    'height': float(vi_tri.height) if vi_tri.height else 0
+                },
+                'orientation': {
+                    'heading': float(vi_tri.heading) if vi_tri.heading else 0,
+                    'pitch': float(vi_tri.pitch) if vi_tri.pitch else 0,
+                    'roll': float(vi_tri.roll) if vi_tri.roll else 0
+                },
+                'scale': float(vi_tri.scale) if vi_tri.scale else 1.0,
+                'url_glb': url_glb,
+                'url_b3dm': url_b3dm,
+                'loai_mo_hinh': {
+                    'id': loai_mh.id,
+                    'loai_cap_nhat': loai_mh.loai_cap_nhat
+                }
+            })
+
         return JsonResponse({
             'success': True,
             'scene_id': ma_canh,
@@ -105,14 +127,16 @@ def get_models_by_scene(request, ma_canh):
             'models': mo_hinhs_data,
             'count': len(mo_hinhs_data)
         })
-        
+
     except Canh.DoesNotExist:
         return JsonResponse({
             'success': False,
             'error': f'Không tìm thấy cảnh với mã {ma_canh}'
         }, status=404)
-        
+
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
             'error': str(e)

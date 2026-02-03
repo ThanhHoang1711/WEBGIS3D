@@ -1,28 +1,52 @@
 <template>
   <div class="main-page">
-    <!-- MapView - CHỈ HIỆN KHI CHỌN "Bản đồ" -->
-    <div class="map-container" v-if="currentView === 'maps'">
-      <MapView />
+    <!-- MapView - v-show để giữ alive khi sang tab khác -->
+    <div
+      class="map-container"
+      v-show="currentView === 'maps' || pickingPosition"
+    >
+      <MapView ref="mapView" />
     </div>
 
-    <!-- ✅ MODEL TYPE MANAGER - HIỆN KHI CHỌN "Quản lý Mô hình" -->
-    <div class="map-container" v-else-if="currentView === 'model-manager'">
+    <!-- MODEL TYPE MANAGER -->
+    <div class="map-container" v-if="currentView === 'model-manager'">
       <ModelTypeManager />
     </div>
 
-    <!-- ✅ MODEL TYPE MANAGER - HIỆN KHI CHỌN "Quản lý Mô hình" -->
-    <div class="content-container full-height" v-else-if="currentView === 'object-manager'">
-      <ObjectManager />
+    <!-- OBJECT MANAGER - v-show để giữ alive khi nhảy về map chọn vị trí -->
+    <div
+      class="content-container full-height"
+      v-show="currentView === 'object-manager' && !pickingPosition"
+    >
+      <ObjectManager
+        ref="objectManager"
+        @request-position-pick="handleRequestPositionPick"
+        @navigate-to="handleNavigateTo"
+        @object-created="handleObjectCreated"
+      />
     </div>
 
-    <!-- ✅ CÁC VIEW KHÁC - Dashboard/Reports/Settings -->
-    <div class="content-container" v-else>
-      <Dashboard v-if="currentView === 'dashboard'" />
-      <Reports v-if="currentView === 'reports'" />
-      <Settings v-if="currentView === 'settings'" />
+    <!-- CÁC VIEW KHÁC — v-if độc lập, không dùng v-else -->
+    <div class="content-container" v-if="currentView === 'dashboard'">
+      <Dashboard />
+    </div>
+    <div class="content-container" v-if="currentView === 'reports'">
+      <Reports />
+    </div>
+    <div class="content-container" v-if="currentView === 'settings'">
+      <Settings />
     </div>
 
-    <!-- Sidebar đè lên map ở góc trái - GIỮ NGUYÊN CODE CŨ -->
+    <!-- ✅ OVERLAY: Báo user đang chọn vị trí cho ObjectManager -->
+    <div v-if="pickingPosition" class="pick-position-overlay">
+      <div class="pick-position-banner">
+        <span class="pick-icon">📍</span>
+        <span class="pick-text">Click lên bản đồ để chọn vị trí đối tượng</span>
+        <button class="pick-cancel" @click="cancelPickPosition">✕ Hủy</button>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
     <aside
       :class="['sidebar-overlay', { collapsed: isSidebarCollapsed }]"
       :style="{ width: isSidebarCollapsed ? '60px' : '200px' }"
@@ -40,20 +64,26 @@
 <script>
 import MapView from "./MapView.vue";
 import Sidebar from "./Sidebar.vue";
-import ModelTypeManager from "./ModelTypeManager.vue"; // ✅ IMPORT MỚI
+import ModelTypeManager from "./ModelTypeManager.vue";
 import ObjectManager from "./ObjectManager.vue";
-
-// Import các component cũ
 import Dashboard from "./Dashboard.vue";
 import Reports from "./Reports.vue";
 import Settings from "./Settings.vue";
+
+// ✅ Import Cesium classes cần để lắng nghe click trên map
+import {
+  ScreenSpaceEventHandler,
+  ScreenSpaceEventType,
+  Cartographic,
+  Math as CesiumMath,
+} from "cesium";
 
 export default {
   name: "MainPage",
   components: {
     MapView,
     Sidebar,
-    ModelTypeManager, // ✅ ĐĂNG KÝ COMPONENT MỚI
+    ModelTypeManager,
     ObjectManager,
     Dashboard,
     Reports,
@@ -78,28 +108,29 @@ export default {
       isSidebarCollapsed: false,
       showContentPanel: false,
       selectedMenuItem: null,
-      currentView: "maps", // Mặc định hiện bản đồ
+      currentView: "maps",
+
+      // ✅ State cho flow chọn vị trí
+      pickingPosition: false, // đang ở mode chọn điểm trên map
+      pickPositionCallback: null, // callback để trả kết quả về ObjectManager
+      pickHandler: null, // ScreenSpaceEventHandler
     };
   },
   methods: {
     toggleSidebar() {
       this.isSidebarCollapsed = !this.isSidebarCollapsed;
     },
+
     handleMenuSelect(menuItem) {
       this.selectedMenuItem = menuItem;
-
-      // ✅ Chuyển đổi view dựa trên menu
       this.currentView = menuItem.id;
-
-      // Log để debug
       console.log(`✅ Switched to view: ${menuItem.id}`);
 
-      // Giữ lại logic cũ nếu cần
       switch (menuItem.id) {
         case "maps":
           this.showContentPanel = false;
           break;
-        case "model-manager": // ✅ THÊM CASE MỚI
+        case "model-manager":
         case "object-manager":
         case "dashboard":
         case "reports":
@@ -110,6 +141,109 @@ export default {
           this.showContentPanel = false;
       }
     },
+
+    handleNavigateTo(viewId) {
+      this.currentView = viewId;
+    },
+
+    // =========================================================
+    // FLOW: ObjectManager yêu cầu chọn vị trí trên bản đồ
+    // =========================================================
+
+    // 1. ObjectManager emit 'request-position-pick' kèm callback
+    handleRequestPositionPick(callback) {
+      this.pickPositionCallback = callback;
+      this.pickingPosition = true; // hiện map, ẩn ObjectManager
+      this.currentView = "maps"; // đảm bảo map container hiện
+
+      // Chờ một tick để MapView render, rồi gắn handler
+      this.$nextTick(() => {
+        this.startPickingOnMap();
+      });
+    },
+
+    // 2. Gắn click handler lên Cesium viewer
+    startPickingOnMap() {
+      const mapView = this.$refs.mapView;
+      // Truy vào viewer từ MapView component
+      // Map.js export default có this.viewer -> truy bằng $data hoặc direct
+      const viewer = mapView?.viewer;
+
+      if (!viewer) {
+        console.warn("⚠️ Viewer chưa sẵn sàng, thử lại sau 500ms");
+        setTimeout(() => this.startPickingOnMap(), 500);
+        return;
+      }
+
+      this.pickHandler = new ScreenSpaceEventHandler(viewer.canvas);
+
+      this.pickHandler.setInputAction((click) => {
+        const cartesian = viewer.scene.pickPosition(click.position);
+        if (!cartesian) {
+          console.warn("Không xác định được vị trí");
+          return;
+        }
+
+        const carto = Cartographic.fromCartesian(cartesian);
+        const position = {
+          lat: parseFloat(CesiumMath.toDegrees(carto.latitude).toFixed(6)),
+          lon: parseFloat(CesiumMath.toDegrees(carto.longitude).toFixed(6)),
+          height: parseFloat(carto.height.toFixed(2)),
+        };
+
+        console.log("✅ Đã chọn vị trí:", position);
+
+        // 3. Trả kết quả về ObjectManager qua callback
+        if (this.pickPositionCallback) {
+          this.pickPositionCallback(position);
+        }
+
+        // 4. Cleanup và quay về ObjectManager
+        this.finishPickPosition();
+      }, ScreenSpaceEventType.LEFT_CLICK);
+
+      console.log("📍 Đang chờ click chọn vị trí trên bản đồ...");
+    },
+
+    // 3. Hủy chọn vị trí (click nút Hủy trên overlay)
+    cancelPickPosition() {
+      this.finishPickPosition();
+      this.currentView = "object-manager"; // quay về ObjectManager
+      console.log("🚫 Hủy chọn vị trí");
+    },
+
+    // 4. Cleanup chung
+    finishPickPosition() {
+      if (this.pickHandler) {
+        this.pickHandler.destroy();
+        this.pickHandler = null;
+      }
+      this.pickingPosition = false;
+      this.pickPositionCallback = null;
+
+      // Quay về object-manager
+      this.currentView = "object-manager";
+    },
+    // =========================================================
+    // Sau khi ObjectManager tạo model mới → reload map
+    // =========================================================
+    async handleObjectCreated(maCanh) {
+      console.log("📡 ObjectManager created object in scene:", maCanh);
+      const mapView = this.$refs.mapView;
+      if (mapView && typeof mapView.reloadCurrentScene === "function") {
+        await mapView.reloadCurrentScene();
+      } else {
+        console.warn("⚠️ mapView.reloadCurrentScene không tìm thấy");
+      }
+    },
+  },
+
+  beforeUnmount() {
+    // Dọn dẹp handler nếu còn
+    if (this.pickHandler) {
+      this.pickHandler.destroy();
+      this.pickHandler = null;
+    }
   },
 };
 </script>
@@ -132,7 +266,7 @@ export default {
   z-index: 1;
 }
 
-/* ✅ Content container cho Dashboard/Reports/Settings */
+/* Content container cho Dashboard/Reports/Settings */
 .content-container {
   position: absolute;
   top: 0;
@@ -143,27 +277,28 @@ export default {
   z-index: 1;
   overflow-y: auto;
   padding: 40px;
-  padding-left: 240px; /* 200px sidebar + 40px margin */
+  padding-left: 240px;
   transition: padding-left 0.3s ease;
 }
 
-/* ✅ QUAN TRỌNG: Full height cho Model Manager (không có padding) */
+/* Full height cho Object Manager */
 .content-container.full-height {
   padding: 0;
-  padding-left: 200px; /* Chỉ có sidebar space */
-  overflow: hidden; /* Không scroll vì ModelManager tự quản lý */
+  padding-left: 200px;
+  overflow: hidden;
+  z-index: 2; /* đè lên map khi hiện */
 }
 
 /* Khi sidebar collapsed */
 .sidebar-overlay.collapsed ~ .content-container {
-  padding-left: 100px; /* 60px sidebar + 40px margin */
+  padding-left: 100px;
 }
 
 .sidebar-overlay.collapsed ~ .content-container.full-height {
-  padding-left: 60px; /* Chỉ có sidebar space */
+  padding-left: 60px;
 }
 
-/* Sidebar đè lên map - GIỮ NGUYÊN */
+/* Sidebar đè lên map */
 .sidebar-overlay {
   position: absolute;
   top: 0;
@@ -181,7 +316,54 @@ export default {
   width: 60px;
 }
 
-/* Header (nếu muốn hiện) */
+/* ✅ Overlay báo chọn vị trí */
+.pick-position-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.pick-position-banner {
+  background: #1e2a3a;
+  color: #fff;
+  padding: 14px 28px;
+  border-radius: 12px 12px 0 0;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.pick-icon {
+  font-size: 22px;
+}
+
+.pick-cancel {
+  margin-left: auto;
+  background: #e53935;
+  border: none;
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pick-cancel:hover {
+  background: #c62828;
+}
+
+/* Header */
 .main-header {
   display: flex;
   justify-content: space-between;
@@ -229,7 +411,7 @@ export default {
   z-index: 5;
 }
 
-/* Responsive design */
+/* Responsive */
 @media (max-width: 768px) {
   .sidebar-overlay {
     position: fixed;
@@ -248,7 +430,7 @@ export default {
     padding: 20px;
     padding-left: 20px;
   }
-  
+
   .content-container.full-height {
     padding-left: 0;
   }
