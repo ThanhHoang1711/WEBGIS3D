@@ -1,15 +1,15 @@
 <template>
-  <div class="main-page">
+  <div class="main-page" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
     <!-- MapView - v-show để giữ alive khi sang tab khác -->
     <div
-      class="map-container"
+      class="content-container full-height"
       v-show="currentView === 'maps' || pickingPosition"
     >
       <MapView ref="mapView" />
     </div>
 
     <!-- MODEL TYPE MANAGER -->
-    <div class="map-container" v-if="currentView === 'model-manager'">
+    <div class="content-container full-height" v-if="currentView === 'model-manager'">
       <ModelTypeManager />
     </div>
 
@@ -27,13 +27,13 @@
     </div>
 
     <!-- CÁC VIEW KHÁC — v-if độc lập, không dùng v-else -->
-    <div class="content-container" v-if="currentView === 'dashboard'">
+    <div class="content-container full-height" v-if="currentView === 'dashboard'">
       <Dashboard />
     </div>
-    <div class="content-container" v-if="currentView === 'reports'">
+    <div class="content-container full-height" v-if="currentView === 'reports'">
       <Reports />
     </div>
-    <div class="content-container" v-if="currentView === 'settings'">
+    <div class="content-container full-height" v-if="currentView === 'settings'">
       <Settings />
     </div>
 
@@ -266,36 +266,31 @@ export default {
   z-index: 1;
 }
 
-/* Content container cho Dashboard/Reports/Settings */
+/* ✅ FIXED: Content container tự động fill khi sidebar toggle */
 .content-container {
   position: absolute;
   top: 0;
-  left: 0;
-  width: 100%;
+  left: 200px; /* Bắt đầu từ cuối sidebar */
+  width: calc(100% - 200px); /* Chiếm phần còn lại */
   height: 100%;
   background-color: #ecf0f1;
   z-index: 1;
   overflow-y: auto;
   padding: 40px;
-  padding-left: 240px;
-  transition: padding-left 0.3s ease;
+  transition: left 0.3s ease, width 0.3s ease; /* Smooth transition */
 }
 
 /* Full height cho Object Manager */
 .content-container.full-height {
   padding: 0;
-  padding-left: 200px;
   overflow: hidden;
   z-index: 2; /* đè lên map khi hiện */
 }
 
-/* Khi sidebar collapsed */
-.sidebar-overlay.collapsed ~ .content-container {
-  padding-left: 100px;
-}
-
-.sidebar-overlay.collapsed ~ .content-container.full-height {
-  padding-left: 60px;
+/* ✅ Khi sidebar collapsed - TẤT CẢ content containers tự động fill */
+.main-page.sidebar-collapsed .content-container {
+  left: 60px;
+  width: calc(100% - 60px);
 }
 
 /* Sidebar đè lên map */
@@ -427,12 +422,14 @@ export default {
   }
 
   .content-container {
+    left: 0;
+    width: 100%;
     padding: 20px;
-    padding-left: 20px;
   }
 
   .content-container.full-height {
-    padding-left: 0;
+    left: 0;
+    width: 100%;
   }
 }
 </style>

@@ -810,21 +810,20 @@ export default {
 </script>
 
 <style scoped>
-/* Container */
+/* ✅ Container - XÓA margin-left để MainPage handle positioning */
 .model-type-manager {
   width: 100%;
   height: 100%;
   overflow: hidden;
   background: #f5f5f5;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  margin-left: 60px;
+  padding: 20px;
 }
 
 .split-container {
   display: flex;
   height: 100%;
   gap: 10px;
-  padding: 10px;
 }
 
 /* Left Panel */
@@ -839,7 +838,7 @@ export default {
 }
 
 .panel-header {
-  padding: 10px;
+  padding: 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   display: flex;
@@ -848,7 +847,6 @@ export default {
 }
 
 .panel-header h2 {
-  padding-left: 250px;
   margin: 0;
   font-size: 24px;
 }
@@ -1366,20 +1364,5 @@ export default {
 .data-table th:nth-child(6), 
 .data-table td:nth-child(6) {
   min-width: 150px;
-}
-
-/* Cập nhật lại các style cần thiết */
-.model-type-manager {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #f5f5f5;
-}
-
-.split-container {
-  display: flex;
-  height: 100%;
-  gap: 10px;
-  padding: 10px;
 }
 </style>
