@@ -128,9 +128,9 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'WEBGIS3D',
+        'NAME': 'bade',
         'USER': 'postgres',
-        'PASSWORD': 'tranbonho',
+        'PASSWORD': '453918',
         'HOST': 'localhost',
         'PORT': '5432',
     }

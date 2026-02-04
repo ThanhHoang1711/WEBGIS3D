@@ -48,6 +48,11 @@
       <button id="btnLoD" class="btnControl" title="Thay đổi cảnh">
         <img class="imgControl" :src="require('@/assets/img/model.png')" />
       </button>
+
+      <!-- Thêm vào panel LOD hoặc toolbar -->
+      <button id="btnToggleAutoSwitch" class="btnControl" title="Bật/Tắt tự động chuyển cảnh">
+        🔄 Auto Switch
+      </button>
     </div>
 
     <!-- Panel hiện nút đo chiều cao và nút lấy tọa độ điểm -->

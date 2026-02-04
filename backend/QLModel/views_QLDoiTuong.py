@@ -124,65 +124,39 @@ def _get_loai_doi_tuong_text(loai):
     return mapping.get(loai, 'Không xác định')
 
 # ✅ API TẠO MỚI ĐỐI TƯỢNG TRÊN BẢN ĐỒ
+# ✅ API TẠO MỚI ĐỐI TƯỢNG TRÊN BẢN ĐỒ
 @csrf_exempt
 @require_http_methods(["POST"])
 def create_doi_tuong(request):
     """
     API tạo mới đối tượng trên bản đồ
-    Endpoint: POST /api/doi-tuong/create/
-    
-    Form data:
-    - ma_canh_id: ID cảnh (required)
-    - ma_loai_mo_hinh_id: ID loại mô hình (optional)
-    - lat, lon, height: vị trí (required)
-    - heading, pitch, roll: góc quay (optional, default 0)
-    - scale: tỷ lệ (optional, default 1.0)
-    - loai_doi_tuong: 1/2/3 (required)
-    - hinh_anh_file: file hình ảnh (optional)
-    - trang_thai: trạng thái (optional, default 1)
-    
-    # Thông tin đối tượng cụ thể tùy theo loại_doi_tuong:
-    
-    Nếu loai_doi_tuong = 1 (Đối tượng chuyển động):
-    - loai_DT: loại đối tượng (TAU, XE, MAY_BAY, UAV)
-    - ten_doi_tuong: tên
-    - duong_chuyen_dong: đường chuyển động
-    - van_toc: vận tốc
-    
-    Nếu loai_doi_tuong = 2 (Cây):
-    - ten_loai: tên loài cây
-    - cay_height: chiều cao
-    - duong_kinh: đường kính thân
-    - tuoi: tuổi cây
-    
-    Nếu loai_doi_tuong = 3 (Công trình):
-    - ten_cong_trinh: tên công trình
-    - loai_cong_trinh: loại (NHA, CAU, CANG, TRAM)
-    - cap_bao_mat: cấp bảo mật (0/1/2)
     """
     try:
         print(f"📡 POST /api/doi-tuong/create/")
+        print("All POST data:", dict(request.POST))
         
         # Lấy thông tin chung
-        ma_canh_id = request.POST.get('ma_canh_id')
-        ma_loai_mo_hinh_id = request.POST.get('ma_loai_mo_hinh_id', None)
+        ma_canh_value = request.POST.get('ma_canh')  # Giá trị ma_canh (0,1,2,3,4)
+        ma_loai_mo_hinh_id = request.POST.get('ma_loai_mo_hinh', None)
         loai_doi_tuong = int(request.POST.get('loai_doi_tuong'))
         trang_thai = int(request.POST.get('trang_thai', 1))
         
         # Validate
-        if not ma_canh_id:
+        if not ma_canh_value:
             return JsonResponse({
                 'success': False,
                 'error': 'Vui lòng chọn cảnh'
             }, status=400)
         
-        # Kiểm tra cảnh tồn tại
+        # Kiểm tra cảnh tồn tại - TÌM THEO ma_canh (0,1,2,3,4)
         try:
-            canh = Canh.objects.get(id=int(ma_canh_id))
+            canh = Canh.objects.get(ma_canh=int(ma_canh_value))
+            print(f"✓ Found Canh: id={canh.id}, ma_canh={canh.ma_canh}")
         except Canh.DoesNotExist:
+            print(f"✗ Canh with ma_canh={ma_canh_value} not found")
             return JsonResponse({
                 'success': False,
-                'error': f'Cảnh ID {ma_canh_id} không tồn tại'
+                'error': f'Cảnh với mã {ma_canh_value} không tồn tại'
             }, status=400)
         
         # Lấy thông tin vị trí
@@ -297,16 +271,29 @@ def create_doi_tuong(request):
                 'error': 'Loại đối tượng không hợp lệ'
             }, status=400)
         
-        # 3. Cuối cùng tạo MoHinh
-        mo_hinh = MoHinh.objects.create(
-            ma_canh_id=ma_canh_id,
-            ma_loai_mo_hinh_id=int(ma_loai_mo_hinh_id) if ma_loai_mo_hinh_id else None,
-            ma_vi_tri=vi_tri,
-            loai_doi_tuong=loai_doi_tuong,
-            hinh_anh=hinh_anh_path,
-            trang_thai=trang_thai
-        )
-        print(f"✅ Created MoHinh: ID={mo_hinh.id}")
+        # 3. Cuối cùng tạo MoHinh - SỬA QUAN TRỌNG
+        # Vì database đang lưu ma_canh_id = ma_canh (0,1,2,3,4) chứ không phải id (6,7,8,9,10)
+        # Cần tìm đúng id của Canh theo ma_canh
+        try:
+            # Tìm Canh có ma_canh = giá trị truyền vào
+            canh_to_use = Canh.objects.get(ma_canh=int(ma_canh_value))
+            
+            mo_hinh = MoHinh.objects.create(
+                ma_canh=canh_to_use,  # Django sẽ tự động lấy id của canh_to_use
+                ma_loai_mo_hinh_id=int(ma_loai_mo_hinh_id) if ma_loai_mo_hinh_id else None,
+                ma_vi_tri=vi_tri,
+                loai_doi_tuong=loai_doi_tuong,
+                hinh_anh=hinh_anh_path,
+                trang_thai=trang_thai
+            )
+            print(f"✅ Created MoHinh: ID={mo_hinh.id}, ma_canh_id={mo_hinh.ma_canh_id}")
+            
+        except Canh.DoesNotExist:
+            vi_tri.delete()
+            return JsonResponse({
+                'success': False,
+                'error': f'Không tìm thấy cảnh với mã {ma_canh_value}'
+            }, status=400)
         
         return JsonResponse({
             'success': True,
@@ -366,8 +353,7 @@ def delete_doi_tuong(request, doi_tuong_id):
             'success': False,
             'error': str(e)
         }, status=500)
-    
-# Thêm vào cuối file views_QLDoiTuong.py
+
 # ✅ API LẤY DANH SÁCH CẢNH CHO DROPDOWN
 @csrf_exempt
 @require_http_methods(["GET"])

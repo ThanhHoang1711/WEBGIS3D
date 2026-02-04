@@ -165,8 +165,10 @@ class MoHinh(models.Model):
     ma_canh = models.ForeignKey(
         'Canh',
         on_delete=models.CASCADE,
+        to_field='ma_canh', 
         related_name='mo_hinhs',
-        verbose_name="Cảnh"
+        verbose_name="Cảnh",
+        db_column='ma_canh_id'
     )
 
     ma_loai_mo_hinh = models.ForeignKey(

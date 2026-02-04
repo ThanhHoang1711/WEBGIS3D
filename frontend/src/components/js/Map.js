@@ -12,6 +12,11 @@ import {
   GeographicTilingScheme,
   Model,
   HeadingPitchRoll,
+  ScreenSpaceEventHandler,
+  ScreenSpaceEventType,
+  Color,
+  Cartographic,
+  defined
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { setupWaterControl } from "./WaterControl";
@@ -34,6 +39,13 @@ class LODManager {
     this.isLoading = false; // Trạng thái đang tải
     this.scenes = []; // Danh sách cảnh từ backend
     this.loadedModels = []; // Danh sách model đã tải
+
+    // ✅ THÊM: Biến quản lý auto-switch
+    this.autoSwitchEnabled = true;
+    this.cameraMoveListener = null;
+    this.lastCheckedPosition = null;
+    this.checkInterval = null;
+    this.checkIntervalMs = 1000; // Kiểm tra mỗi 1 giây
   }
 
   // ✅ Tải danh sách cảnh từ backend
@@ -401,6 +413,157 @@ class LODManager {
     };
   }
 
+  // ✅ THÊM: Kích hoạt tự động chuyển cảnh
+  enableAutoSwitch() {
+    if (this.cameraMoveListener) {
+      return; // Đã được kích hoạt rồi
+    }
+
+    this.autoSwitchEnabled = true;
+
+    // Lắng nghe sự kiện camera di chuyển
+    this.cameraMoveListener = this.viewer.camera.moveEnd.addEventListener(() => {
+      this.checkAndSwitchScene();
+    });
+
+    // Kiểm tra định kỳ (phòng trường hợp camera di chuyển mượt không trigger moveEnd)
+    this.checkInterval = setInterval(() => {
+      if (this.autoSwitchEnabled && !this.isLoading) {
+        this.checkAndSwitchScene();
+      }
+    }, this.checkIntervalMs);
+
+    console.log("✅ Đã bật tự động chuyển cảnh");
+    this.showNotification("Đã bật tự động chuyển cảnh", "success");
+  }
+
+  // ✅ THÊM: Tắt tự động chuyển cảnh
+  disableAutoSwitch() {
+    this.autoSwitchEnabled = false;
+
+    if (this.cameraMoveListener) {
+      this.cameraMoveListener();
+      this.cameraMoveListener = null;
+    }
+
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+      this.checkInterval = null;
+    }
+
+    console.log("✅ Đã tắt tự động chuyển cảnh");
+    this.showNotification("Đã tắt tự động chuyển cảnh", "info");
+  }
+
+  // ✅ THÊM: Kiểm tra và chuyển cảnh tự động
+  checkAndSwitchScene() {
+    if (!this.autoSwitchEnabled || this.isLoading || this.scenes.length === 0) {
+      return;
+    }
+
+    // Lấy vị trí hiện tại của camera
+    const cameraPosition = this.viewer.camera.positionCartographic;
+    const cameraLon = CesiumMath.toDegrees(cameraPosition.longitude);
+    const cameraLat = CesiumMath.toDegrees(cameraPosition.latitude);
+    const cameraHeight = cameraPosition.height;
+
+    // Kiểm tra xem có thay đổi đáng kể không (tránh check liên tục)
+    if (this.lastCheckedPosition) {
+      const deltaLat = Math.abs(cameraLat - this.lastCheckedPosition.lat);
+      const deltaLon = Math.abs(cameraLon - this.lastCheckedPosition.lon);
+      const deltaHeight = Math.abs(cameraHeight - this.lastCheckedPosition.height);
+
+      // Nếu thay đổi quá nhỏ, bỏ qua
+      if (deltaLat < 0.0001 && deltaLon < 0.0001 && deltaHeight < 10) {
+        return;
+      }
+    }
+
+    // Lưu vị trí đã check
+    this.lastCheckedPosition = {
+      lat: cameraLat,
+      lon: cameraLon,
+      height: cameraHeight
+    };
+
+    // Tìm cảnh phù hợp
+    const matchedScene = this.findMatchingScene(cameraLat, cameraLon, cameraHeight);
+
+    if (matchedScene && matchedScene.ma_canh !== this.currentLOD) {
+      console.log(`🔄 Tự động chuyển sang cảnh ${matchedScene.ma_canh} - ${matchedScene.ten_canh}`);
+      this.switchToLOD(matchedScene.ma_canh);
+    }
+  }
+
+  // ✅ THÊM: Tìm cảnh phù hợp với vị trí camera
+  findMatchingScene(cameraLat, cameraLon, cameraHeight) {
+    let bestMatch = null;
+    let minDistance = Infinity;
+
+    for (const scene of this.scenes) {
+      // Kiểm tra điều kiện 1: Độ cao camera nằm trong khoảng phù hợp
+      // Cho phép camera cao hơn hoặc thấp hơn một chút so với height của cảnh
+      const heightTolerance = scene.camera?.height * 0.5 || 1000; // Dung sai 50%
+      const minHeight = (scene.camera?.height || 1000) - heightTolerance;
+      const maxHeight = (scene.camera?.height || 1000) + heightTolerance;
+
+      if (cameraHeight < minHeight || cameraHeight > maxHeight) {
+        continue; // Bỏ qua cảnh này nếu độ cao không phù hợp
+      }
+
+      // Kiểm tra điều kiện 2: Khoảng cách từ camera đến tâm cảnh
+      const sceneLat = scene.camera?.lat || 21.028511;
+      const sceneLon = scene.camera?.lon || 105.804817;
+      
+      const distance = this.calculateDistance(
+        cameraLat, cameraLon,
+        sceneLat, sceneLon
+      );
+
+      // Bán kính = height của cảnh (theo yêu cầu)
+      const radius = scene.camera?.height || 1000;
+
+      if (distance <= radius) {
+        // Camera nằm trong bán kính của cảnh này
+        if (distance < minDistance) {
+          minDistance = distance;
+          bestMatch = scene;
+        }
+      }
+    }
+
+    return bestMatch;
+  }
+
+  // ✅ THÊM: Tính khoảng cách giữa 2 điểm (Haversine formula)
+  calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Bán kính Trái Đất (mét)
+    const dLat = CesiumMath.toRadians(lat2 - lat1);
+    const dLon = CesiumMath.toRadians(lon2 - lon1);
+
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(CesiumMath.toRadians(lat1)) * 
+      Math.cos(CesiumMath.toRadians(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+
+    return distance;
+  }
+
+  // ✅ THÊM: Toggle auto-switch (bật/tắt)
+  toggleAutoSwitch() {
+    if (this.autoSwitchEnabled) {
+      this.disableAutoSwitch();
+      return false;
+    } else {
+      this.enableAutoSwitch();
+      return true;
+    }
+  }
+
   // Hiển thị thông báo
   showNotification(message, type = "info") {
     console.log(`${type.toUpperCase()}: ${message}`);
@@ -473,6 +636,18 @@ export default {
       attrVisible: false,
       attrContent: "",
       viewshedActive: false,
+
+      // Các biến cho chức năng đo đạc
+      measureActive: false,
+      locateActive: false,
+      measureHandler: null,
+      locateHandler: null,
+      firstMeasurePoint: null,
+      dynamicMeasureLine: null,
+      measurePoints: [],
+      measureLines: [],
+      measureLabels: [],
+      coordMarkers: [],
     };
   },
 
@@ -529,6 +704,9 @@ export default {
             throw new Error("Không có cảnh nào trong hệ thống");
           }
         }
+
+        // ✅ THÊM: Kích hoạt tự động chuyển cảnh
+        this.lodManager.enableAutoSwitch();
 
         // 4. THIẾT LẬP CÁC NÚT CHỨC NĂNG
         this.setupMeasureButton();
@@ -599,7 +777,6 @@ export default {
     /* =========================
        Phương thức đo đạc
        ========================= */
-
     setupMeasureButton() {
       const btnMeasure = document.getElementById("btnMeasure");
       const panelMeasure = document.getElementById("panelMeasure");
@@ -664,55 +841,6 @@ export default {
           panelLoD.style.display = "none";
         }
       });
-    },
-
-    showCurrentLODInfo() {
-      const oldDisplay = document.querySelector(".lod-info-display");
-      if (oldDisplay) {
-        oldDisplay.remove();
-      }
-
-      const lodInfo = this.lodManager.getCurrentLODInfo();
-
-      const display = document.createElement("div");
-      display.className = "lod-info-display";
-      display.innerHTML = `
-        <h4>📊 THÔNG TIN CẢNH HIỆN TẠI</h4>
-        <p><strong>Cảnh:</strong> ${lodInfo.level} - ${
-        lodInfo.scene ? lodInfo.scene.ten_canh : "N/A"
-      }</p>
-        <p><strong>Mô tả:</strong> ${lodInfo.description}</p>
-        <p><strong>Số model:</strong> ${lodInfo.modelCount}</p>
-        <p><strong>Trạng thái:</strong> ${
-          lodInfo.isLoading ? "Đang tải..." : "Đã tải ✓"
-        }</p>
-      `;
-
-      display.style.cssText = `
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 15px;
-        border-radius: 5px;
-        z-index: 9999;
-        min-width: 300px;
-      `;
-
-      document.body.appendChild(display);
-
-      setTimeout(() => {
-        if (display.parentNode) {
-          display.style.opacity = "0";
-          display.style.transition = "opacity 0.5s";
-          setTimeout(() => {
-            if (display.parentNode) {
-              display.parentNode.removeChild(display);
-            }
-          }, 500);
-        }
-      }, 5000);
     },
 
     // ✅ PHƯƠNG THỨC ĐO CHIỀU CAO (gọi từ template)
@@ -1103,6 +1231,78 @@ export default {
       }
     },
 
+    // ✅ THÊM: Toggle auto-switch (bật/tắt)
+    toggleAutoSwitch() {
+      if (this.lodManager) {
+        const isEnabled = this.lodManager.toggleAutoSwitch();
+        this.showNotification(
+          `Tự động chuyển cảnh ${isEnabled ? "đã bật" : "đã tắt"}`,
+          isEnabled ? "success" : "info"
+        );
+        return isEnabled;
+      }
+      return false;
+    },
+
+    // ✅ THÊM: Phương thức hiển thị thông tin cảnh hiện tại
+    showCurrentLODInfo() {
+      if (!this.lodManager) {
+        this.showNotification("LOD Manager chưa được khởi tạo", "warning");
+        return;
+      }
+
+      const lodInfo = this.lodManager.getCurrentLODInfo();
+      
+      // Xóa thông tin cũ nếu có
+      const oldDisplay = document.querySelector(".lod-info-display");
+      if (oldDisplay) {
+        oldDisplay.remove();
+      }
+
+      const display = document.createElement("div");
+      display.className = "lod-info-display";
+      display.innerHTML = `
+        <h4>📊 THÔNG TIN CẢNH HIỆN TẠI</h4>
+        <p><strong>Cảnh:</strong> ${lodInfo.level} - ${
+        lodInfo.scene ? lodInfo.scene.ten_canh : "N/A"
+      }</p>
+        <p><strong>Mô tả:</strong> ${lodInfo.description}</p>
+        <p><strong>Số model:</strong> ${lodInfo.modelCount}</p>
+        <p><strong>Trạng thái:</strong> ${
+          lodInfo.isLoading ? "Đang tải..." : "Đã tải ✓"
+        }</p>
+        <p><strong>Tự động chuyển cảnh:</strong> ${
+          this.lodManager.autoSwitchEnabled ? "BẬT" : "TẮT"
+        }</p>
+      `;
+
+      display.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 15px;
+        border-radius: 5px;
+        z-index: 9999;
+        min-width: 300px;
+      `;
+
+      document.body.appendChild(display);
+
+      setTimeout(() => {
+        if (display.parentNode) {
+          display.style.opacity = "0";
+          display.style.transition = "opacity 0.5s";
+          setTimeout(() => {
+            if (display.parentNode) {
+              display.parentNode.removeChild(display);
+            }
+          }, 500);
+        }
+      }, 5000);
+    },
+
     showNotification(message, type = "info") {
       console.log(`${type.toUpperCase()}: ${message}`);
 
@@ -1160,7 +1360,11 @@ export default {
     if (this.locateHandler) this.locateHandler.destroy();
     if (this.attrHandler) this.attrHandler.destroy();
 
-    this.lodManager = null;
+    // Dọn dẹp LOD Manager
+    if (this.lodManager) {
+      this.lodManager.disableAutoSwitch();
+      this.lodManager = null;
+    }
 
     if (this.viewer && !this.viewer.isDestroyed()) {
       this.viewer.destroy();
