@@ -724,9 +724,11 @@ export default {
     // ============ SUBMIT ============
     async handleSubmit() {
       // Validate
-      if (this.formData.ma_canh_id === "" || 
-          this.formData.ma_canh_id === null || 
-          this.formData.ma_canh_id === undefined) {
+      if (
+        this.formData.ma_canh_id === "" ||
+        this.formData.ma_canh_id === null ||
+        this.formData.ma_canh_id === undefined
+      ) {
         this.showNotification("Vui lòng chọn cảnh", "warning");
         return;
       }
@@ -772,10 +774,7 @@ export default {
         // Thông tin cơ bản
         formData.append("ma_canh", this.formData.ma_canh_id);
         if (this.formData.ma_loai_mo_hinh_id) {
-          formData.append(
-            "ma_loai_mo_hinh",
-            this.formData.ma_loai_mo_hinh_id,
-          );
+          formData.append("ma_loai_mo_hinh", this.formData.ma_loai_mo_hinh_id);
         }
         formData.append("loai_doi_tuong", this.formData.loai_doi_tuong);
         formData.append("trang_thai", this.formData.trang_thai);
