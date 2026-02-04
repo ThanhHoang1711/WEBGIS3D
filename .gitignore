@@ -65,4 +65,8 @@ Sandcastle/
 # Django local settings
 # =====================
 backend/backend/settings.py
+<<<<<<< Updated upstream
 backend/*/migrations/0001_initial.py
+=======
+backend/*/migrations/0001_initial.py
+>>>>>>> Stashed changes
