@@ -894,11 +894,11 @@ export default {
 <style scoped>
 /* Container */
 .object-manager {
-  width: 100%;
-  height: 100%;
+  width: 98.3%;
+  height: 97%;
   overflow: hidden;
   background: #f5f5f5;
-  padding: 20px;
+  padding: 10px;
 }
 
 .main-panel {
