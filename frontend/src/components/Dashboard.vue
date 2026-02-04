@@ -20,9 +20,9 @@ export default {
 
 <style scoped>
 .dashboard {
-  width: 100%;
-  height: 100%;
-  padding: 20px;
+  width: 98.3%;
+  height: 97%;
+  padding: 10px;
 }
 
 .dashboard h1 {

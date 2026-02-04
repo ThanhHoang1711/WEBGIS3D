@@ -812,12 +812,12 @@ export default {
 <style scoped>
 /* ✅ Container - XÓA margin-left để MainPage handle positioning */
 .model-type-manager {
-  width: 100%;
-  height: 100%;
+  width: 98.8%;
+  height: 97%;
   overflow: hidden;
   background: #f5f5f5;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  padding: 20px;
+  padding: 10px;
 }
 
 .split-container {
