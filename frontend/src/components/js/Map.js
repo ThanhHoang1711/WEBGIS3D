@@ -16,7 +16,8 @@ import {
   ScreenSpaceEventType,
   Color,
   Cartographic,
-  defined
+  defined,
+  Cartesian2,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { setupWaterControl } from "./WaterControl";
@@ -35,20 +36,18 @@ class LODManager {
   constructor(viewer, backendUrl = "http://localhost:8000") {
     this.viewer = viewer;
     this.backendUrl = backendUrl;
-    this.currentLOD = null; // Lưu LOD hiện tại (mã cảnh)
-    this.isLoading = false; // Trạng thái đang tải
-    this.scenes = []; // Danh sách cảnh từ backend
-    this.loadedModels = []; // Danh sách model đã tải
+    this.currentLOD = null;
+    this.isLoading = false;
+    this.scenes = [];
+    this.loadedModels = [];
 
-    // ✅ THÊM: Biến quản lý auto-switch
     this.autoSwitchEnabled = true;
     this.cameraMoveListener = null;
     this.lastCheckedPosition = null;
     this.checkInterval = null;
-    this.checkIntervalMs = 1000; // Kiểm tra mỗi 1 giây
+    this.checkIntervalMs = 1000;
   }
 
-  // ✅ Tải danh sách cảnh từ backend
   async initScenes() {
     try {
       console.log("🔄 Đang tải danh sách cảnh từ backend...");
@@ -64,10 +63,7 @@ class LODManager {
       if (data.success) {
         this.scenes = data.scenes;
         console.log(`✅ Đã tải ${data.count} cảnh từ backend:`, this.scenes);
-
-        // Thiết lập các nút LOD dựa trên danh sách cảnh
         this.setupLODButtons();
-
         return true;
       } else {
         console.error("❌ Lỗi khi tải danh sách cảnh:", data.error);
@@ -85,22 +81,18 @@ class LODManager {
   }
 
   setupLODButtons() {
-    // Tạo mapping động dựa trên danh sách cảnh
     this.scenes.forEach((scene) => {
       const buttonId = `btnLoD${scene.ma_canh}`;
       const button = document.getElementById(buttonId);
 
       if (button) {
-        // Xóa event listener cũ nếu có
         const newButton = button.cloneNode(true);
         button.parentNode.replaceChild(newButton, button);
 
-        // Gán sự kiện click mới
         newButton.addEventListener("click", () => {
           this.switchToLOD(scene.ma_canh);
         });
 
-        // Cập nhật tooltip
         newButton.title = `Chuyển sang ${scene.ten_canh}`;
         newButton.classList.add("lod-button");
 
@@ -111,16 +103,13 @@ class LODManager {
     });
   }
 
-  // ✅ Chuyển đổi sang cảnh cụ thể
   async switchToLOD(ma_canh) {
-    // Kiểm tra nếu đang tải
     if (this.isLoading) {
       console.log("⏳ Đang tải cảnh, vui lòng đợi...");
       this.showNotification("Đang tải cảnh, vui lòng đợi...", "warning");
       return;
     }
 
-    // Kiểm tra nếu đã ở cảnh này
     if (ma_canh === this.currentLOD) {
       console.log(`✓ Đã ở cảnh ${ma_canh}`);
       this.showNotification(`Đã ở cảnh ${ma_canh}`, "info");
@@ -131,28 +120,17 @@ class LODManager {
       this.isLoading = true;
       console.log(`🔄 Đang chuyển sang cảnh ${ma_canh}...`);
 
-      // Tìm thông tin cảnh
       const scene = this.scenes.find((s) => s.ma_canh === ma_canh);
       if (!scene) {
         throw new Error(`Không tìm thấy cảnh ${ma_canh} trong danh sách`);
       }
 
-      // 1. Xóa các model cũ trước
       this.clearLoadedModels();
-
-      // 2. Tải terrain
       await this.loadTerrainForScene(scene);
-
-      // 3. Di chuyển camera đến vị trí cảnh
       await this.moveCameraToScene(scene);
-
-      // 4. Tải các model của cảnh mới
       await this.loadModelsForScene(scene.ma_canh);
 
-      // 5. Cập nhật trạng thái hiện tại
       this.currentLOD = ma_canh;
-
-      // 6. Cập nhật giao diện nút
       this.updateLODButtonStates(ma_canh);
 
       console.log(`✅ Đã chuyển sang cảnh ${ma_canh} thành công`);
@@ -168,7 +146,6 @@ class LODManager {
     }
   }
 
-  // ✅ Tải terrain cho cảnh (TỪ DB)
   async loadTerrainForScene(scene) {
     if (!scene.url_terrain) {
       console.warn(`⚠️ Cảnh ${scene.ma_canh} không có URL terrain trong DB`);
@@ -177,7 +154,6 @@ class LODManager {
 
     try {
       console.log(`🌍 Đang tải terrain từ DB: ${scene.url_terrain}`);
-
       this.showNotification(`Đang tải terrain ${scene.ten_canh}...`, "info");
 
       const terrainProvider = await CesiumTerrainProvider.fromUrl(
@@ -202,7 +178,6 @@ class LODManager {
     }
   }
 
-  // ✅ Di chuyển camera đến vị trí cảnh (TỪ DB)
   async moveCameraToScene(scene) {
     if (!scene.camera) {
       console.warn(
@@ -225,7 +200,7 @@ class LODManager {
           pitch: CesiumMath.toRadians(pitch || -30),
           roll: CesiumMath.toRadians(roll || 0),
         },
-        duration: 2.0, // 2 giây animation
+        duration: 2.0,
       });
 
       console.log(`✅ Camera đã di chuyển đến vị trí cảnh ${scene.ma_canh}`);
@@ -234,7 +209,6 @@ class LODManager {
     }
   }
 
-  // ✅ Xóa tất cả model đã tải
   clearLoadedModels() {
     console.log(`🗑️ Đang xóa ${this.loadedModels.length} model cũ...`);
 
@@ -250,12 +224,10 @@ class LODManager {
     console.log("✅ Đã xóa tất cả model cũ");
   }
 
-  // ✅ FIXED: Tải các model cho cảnh - SỬA URL ĐÃ ĐÚNG
   async loadModelsForScene(ma_canh) {
     try {
       console.log(`🔄 Đang tải model cho cảnh ${ma_canh}...`);
 
-      // ✅ FIXED: Thêm /QLModel/ vào đầu URL
       const response = await fetch(
         `${this.backendUrl}/QLModel/api/scenes/${ma_canh}/models/`,
       );
@@ -279,7 +251,6 @@ class LODManager {
         return;
       }
 
-      // Tải từng model
       let loadedCount = 0;
       let errorCount = 0;
 
@@ -317,10 +288,8 @@ class LODManager {
     }
   }
 
-  // ✅ Tải một model đơn lẻ
   async loadSingleModel(modelData) {
     try {
-      // Kiểm tra dữ liệu model
       if (!modelData.position) {
         console.warn("⚠️ Model thiếu thông tin vị trí:", modelData);
         return null;
@@ -333,14 +302,12 @@ class LODManager {
         return null;
       }
 
-      // Tạo vị trí Cartesian3
       const cartesianPosition = Cartesian3.fromDegrees(
         position.lon,
         position.lat,
         position.height || 0,
       );
 
-      // Tạo orientation (HPR - Heading, Pitch, Roll)
       const hpr = orientation
         ? new HeadingPitchRoll(
             CesiumMath.toRadians(orientation.heading || 0),
@@ -349,13 +316,11 @@ class LODManager {
           )
         : new HeadingPitchRoll(0, 0, 0);
 
-      // Tạo model matrix
       const modelMatrix = Transforms.headingPitchRollToFixedFrame(
         cartesianPosition,
         hpr,
       );
 
-      // Tải model GLB
       const model = await Model.fromGltfAsync({
         url: url_glb,
         modelMatrix: modelMatrix,
@@ -363,7 +328,6 @@ class LODManager {
         incrementallyLoadTextures: true,
       });
 
-      // Thêm model vào scene
       this.viewer.scene.primitives.add(model);
 
       console.log(`✅ Đã tải model ${modelData.id} từ ${url_glb}`);
@@ -381,7 +345,6 @@ class LODManager {
 
       if (button) {
         if (scene.ma_canh === activeLOD) {
-          // Nút đang active
           button.classList.add("active-lod");
           button.style.backgroundColor = "#4CAF50";
           button.style.color = "white";
@@ -398,7 +361,6 @@ class LODManager {
     });
   }
 
-  // Lấy thông tin về cảnh hiện tại
   getCurrentLODInfo() {
     const currentScene = this.scenes.find((s) => s.ma_canh === this.currentLOD);
 
@@ -413,20 +375,19 @@ class LODManager {
     };
   }
 
-  // ✅ THÊM: Kích hoạt tự động chuyển cảnh
   enableAutoSwitch() {
     if (this.cameraMoveListener) {
-      return; // Đã được kích hoạt rồi
+      return;
     }
 
     this.autoSwitchEnabled = true;
 
-    // Lắng nghe sự kiện camera di chuyển
-    this.cameraMoveListener = this.viewer.camera.moveEnd.addEventListener(() => {
-      this.checkAndSwitchScene();
-    });
+    this.cameraMoveListener = this.viewer.camera.moveEnd.addEventListener(
+      () => {
+        this.checkAndSwitchScene();
+      },
+    );
 
-    // Kiểm tra định kỳ (phòng trường hợp camera di chuyển mượt không trigger moveEnd)
     this.checkInterval = setInterval(() => {
       if (this.autoSwitchEnabled && !this.isLoading) {
         this.checkAndSwitchScene();
@@ -437,7 +398,6 @@ class LODManager {
     this.showNotification("Đã bật tự động chuyển cảnh", "success");
   }
 
-  // ✅ THÊM: Tắt tự động chuyển cảnh
   disableAutoSwitch() {
     this.autoSwitchEnabled = false;
 
@@ -455,76 +415,74 @@ class LODManager {
     this.showNotification("Đã tắt tự động chuyển cảnh", "info");
   }
 
-  // ✅ THÊM: Kiểm tra và chuyển cảnh tự động
   checkAndSwitchScene() {
     if (!this.autoSwitchEnabled || this.isLoading || this.scenes.length === 0) {
       return;
     }
 
-    // Lấy vị trí hiện tại của camera
     const cameraPosition = this.viewer.camera.positionCartographic;
     const cameraLon = CesiumMath.toDegrees(cameraPosition.longitude);
     const cameraLat = CesiumMath.toDegrees(cameraPosition.latitude);
     const cameraHeight = cameraPosition.height;
 
-    // Kiểm tra xem có thay đổi đáng kể không (tránh check liên tục)
     if (this.lastCheckedPosition) {
       const deltaLat = Math.abs(cameraLat - this.lastCheckedPosition.lat);
       const deltaLon = Math.abs(cameraLon - this.lastCheckedPosition.lon);
-      const deltaHeight = Math.abs(cameraHeight - this.lastCheckedPosition.height);
+      const deltaHeight = Math.abs(
+        cameraHeight - this.lastCheckedPosition.height,
+      );
 
-      // Nếu thay đổi quá nhỏ, bỏ qua
       if (deltaLat < 0.0001 && deltaLon < 0.0001 && deltaHeight < 10) {
         return;
       }
     }
 
-    // Lưu vị trí đã check
     this.lastCheckedPosition = {
       lat: cameraLat,
       lon: cameraLon,
-      height: cameraHeight
+      height: cameraHeight,
     };
 
-    // Tìm cảnh phù hợp
-    const matchedScene = this.findMatchingScene(cameraLat, cameraLon, cameraHeight);
+    const matchedScene = this.findMatchingScene(
+      cameraLat,
+      cameraLon,
+      cameraHeight,
+    );
 
     if (matchedScene && matchedScene.ma_canh !== this.currentLOD) {
-      console.log(`🔄 Tự động chuyển sang cảnh ${matchedScene.ma_canh} - ${matchedScene.ten_canh}`);
+      console.log(
+        `🔄 Tự động chuyển sang cảnh ${matchedScene.ma_canh} - ${matchedScene.ten_canh}`,
+      );
       this.switchToLOD(matchedScene.ma_canh);
     }
   }
 
-  // ✅ THÊM: Tìm cảnh phù hợp với vị trí camera
   findMatchingScene(cameraLat, cameraLon, cameraHeight) {
     let bestMatch = null;
     let minDistance = Infinity;
 
     for (const scene of this.scenes) {
-      // Kiểm tra điều kiện 1: Độ cao camera nằm trong khoảng phù hợp
-      // Cho phép camera cao hơn hoặc thấp hơn một chút so với height của cảnh
-      const heightTolerance = scene.camera?.height * 0.5 || 1000; // Dung sai 50%
+      const heightTolerance = scene.camera?.height * 0.5 || 1000;
       const minHeight = (scene.camera?.height || 1000) - heightTolerance;
       const maxHeight = (scene.camera?.height || 1000) + heightTolerance;
 
       if (cameraHeight < minHeight || cameraHeight > maxHeight) {
-        continue; // Bỏ qua cảnh này nếu độ cao không phù hợp
+        continue;
       }
 
-      // Kiểm tra điều kiện 2: Khoảng cách từ camera đến tâm cảnh
       const sceneLat = scene.camera?.lat || 21.028511;
       const sceneLon = scene.camera?.lon || 105.804817;
-      
+
       const distance = this.calculateDistance(
-        cameraLat, cameraLon,
-        sceneLat, sceneLon
+        cameraLat,
+        cameraLon,
+        sceneLat,
+        sceneLon,
       );
 
-      // Bán kính = height của cảnh (theo yêu cầu)
       const radius = scene.camera?.height || 1000;
 
       if (distance <= radius) {
-        // Camera nằm trong bán kính của cảnh này
         if (distance < minDistance) {
           minDistance = distance;
           bestMatch = scene;
@@ -535,17 +493,17 @@ class LODManager {
     return bestMatch;
   }
 
-  // ✅ THÊM: Tính khoảng cách giữa 2 điểm (Haversine formula)
   calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371000; // Bán kính Trái Đất (mét)
+    const R = 6371000;
     const dLat = CesiumMath.toRadians(lat2 - lat1);
     const dLon = CesiumMath.toRadians(lon2 - lon1);
 
-    const a = 
+    const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(CesiumMath.toRadians(lat1)) * 
-      Math.cos(CesiumMath.toRadians(lat2)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      Math.cos(CesiumMath.toRadians(lat1)) *
+        Math.cos(CesiumMath.toRadians(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distance = R * c;
@@ -553,7 +511,6 @@ class LODManager {
     return distance;
   }
 
-  // ✅ THÊM: Toggle auto-switch (bật/tắt)
   toggleAutoSwitch() {
     if (this.autoSwitchEnabled) {
       this.disableAutoSwitch();
@@ -564,7 +521,6 @@ class LODManager {
     }
   }
 
-  // Hiển thị thông báo
   showNotification(message, type = "info") {
     console.log(`${type.toUpperCase()}: ${message}`);
 
@@ -626,48 +582,32 @@ export default {
       uploadModelHandler: null,
       uploadI3DM: null,
       lodManager: null,
+      navigationControl: null,
+      measurementSystem: null,
+      coordinateSystem: null,
 
-      // Backend URL
       backendUrl: "http://localhost:8000",
 
-      // attribute (bảng thuộc tính)
       attrHandler: null,
       attrActive: false,
       attrVisible: false,
       attrContent: "",
       viewshedActive: false,
-
-      // Các biến cho chức năng đo đạc
-      measureActive: false,
-      locateActive: false,
-      measureHandler: null,
-      locateHandler: null,
-      firstMeasurePoint: null,
-      dynamicMeasureLine: null,
-      measurePoints: [],
-      measureLines: [],
-      measureLabels: [],
-      coordMarkers: [],
     };
   },
 
   methods: {
-    /* =========================
-       Khởi tạo Viewer Cesium với chức năng LOD từ backend
-       ========================= */
     async initCesium() {
       try {
         Ion.defaultAccessToken =
           "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhMjFiMTVhMy0yOTliLTQ2ODQtYTEzNy0xZDI0YTVlZWVkNTkiLCJpZCI6MzI2NjIyLCJpYXQiOjE3NTM3OTQ1NTB9.CB33-d5mVIlNDJeLUMWSyovvOtqLC2ewy0_rBOMwM8k";
 
-        // Tạo viewer Cesium với terrain mặc định
         this.viewer = new Viewer("cesiumContainer", {
           animation: false,
           timeline: false,
           baseLayerPicker: false,
         });
 
-        // ✅ BẮT BUỘC: Enable depth test
         this.viewer.scene.globe.depthTestAgainstTerrain = true;
 
         console.log("✅ Cesium Viewer đã khởi tạo");
@@ -683,7 +623,7 @@ export default {
           throw new Error("Không thể tải danh sách cảnh từ backend");
         }
 
-        // 3. TẢI CẢNH MẶC ĐỊNH TỪ API
+        // 3. TẢI CẢNH MẶC ĐỊNH
         const defaultScene = await this.loadDefaultScene();
 
         if (defaultScene && defaultScene.ma_canh !== undefined) {
@@ -696,7 +636,6 @@ export default {
             "⚠️ Không tìm thấy cảnh mặc định, thử tải cảnh đầu tiên",
           );
 
-          // Fallback: tải cảnh đầu tiên trong danh sách
           if (this.lodManager.scenes.length > 0) {
             const firstScene = this.lodManager.scenes[0];
             await this.lodManager.switchToLOD(firstScene.ma_canh);
@@ -705,32 +644,49 @@ export default {
           }
         }
 
-        // ✅ THÊM: Kích hoạt tự động chuyển cảnh
         this.lodManager.enableAutoSwitch();
 
-        // 4. THIẾT LẬP CÁC NÚT CHỨC NĂNG
+        // 4. KHỞI TẠO CÁC HỆ THỐNG ĐO ĐẠC VÀ TỌA ĐỘ
+        this.measurementSystem = new MeasurementSystem(
+          this.viewer,
+          this.showNotification.bind(this),
+        );
+        console.log("✅ Measurement System đã khởi tạo");
+
+        this.coordinateSystem = new CoordinateSystem(
+          this.viewer,
+          this.showNotification.bind(this),
+        );
+        console.log("✅ Coordinate System đã khởi tạo");
+
+        // 5. KHỞI TẠO NAVIGATION CONTROL
+        this.navigationControl = new NavigationControl(this.viewer);
+        console.log("✅ Navigation Control đã khởi tạo");
+
+        // 6. THIẾT LẬP CÁC NÚT CHỨC NĂNG
         this.setupMeasureButton();
         this.setupLoDButton();
 
-        // 5. KÍCH HOẠT MÔ PHỎNG NƯỚC
+        // 7. KÍCH HOẠT MÔ PHỎNG NƯỚC
         setupWaterControl(this.viewer);
 
-        // 6. KHỞI TẠO MODEL MANAGER
+        // 8. KHỞI TẠO MODEL MANAGER
         this.modelManager = new ModelManager(this.viewer);
         console.log("✅ Model Manager initialized");
         window.modelManager = this.modelManager;
 
-        // 7. Khởi tạo UploadModelHandler
+        // 9. KHỞI TẠO UPLOAD HANDLER
         this.uploadModelHandler = new UploadModelHandler(this.viewer);
         console.log("✅ UploadModelHandler initialized");
         window.uploadModelHandler = this.uploadModelHandler;
         window.__uploadHandler = this.uploadModelHandler;
-        // 8. Khởi tạo UploadI3DM
+
+        // 10. KHỞI TẠO UPLOAD I3DM
         this.uploadI3DM = new UploadI3DM(this.viewer);
         console.log("✅ UploadI3DM initialized");
         window.uploadI3DM = this.uploadI3DM;
 
-        // 9. Gán nút toggle bản đồ nền
+        // 11. GÁN NÚT TOGGLE BẢN ĐỒ NỀN
         const btnBasemap = document.getElementById("btnBasemap");
         if (btnBasemap) {
           btnBasemap.addEventListener("click", () => this.toggleBasemap());
@@ -744,9 +700,6 @@ export default {
       }
     },
 
-    /* =========================
-       ✅ MỚI: Tải cảnh mặc định từ API
-       ========================= */
     async loadDefaultScene() {
       try {
         console.log("🔄 Đang tải cảnh mặc định từ API...");
@@ -774,9 +727,6 @@ export default {
       }
     },
 
-    /* =========================
-       Phương thức đo đạc
-       ========================= */
     setupMeasureButton() {
       const btnMeasure = document.getElementById("btnMeasure");
       const panelMeasure = document.getElementById("panelMeasure");
@@ -843,306 +793,34 @@ export default {
       });
     },
 
-    // ✅ PHƯƠNG THỨC ĐO CHIỀU CAO (gọi từ template)
+    // ============================================
+    // CÁC PHƯƠNG THỨC ĐO ĐẠC - SỬ DỤNG MeasurementSystem
+    // ============================================
     toggleHeightMeasure() {
-      if (this.locateActive) {
-        this.deactivateLocatePoint();
-        this.locateActive = false;
-      }
-
-      if (this.measureActive) {
-        this.deactivateHeightMeasure();
-        this.measureActive = false;
-        this.showNotification("Chế độ đo chiều cao đã tắt!", "success");
-      } else {
-        this.activateHeightMeasure();
-        this.measureActive = true;
-        this.showNotification(
-          "Chế độ đo chiều cao đã bật. Click 2 điểm để đo Δh.",
-          "info",
-        );
+      if (this.measurementSystem) {
+        this.measurementSystem.toggleHeightMeasure(this.coordinateSystem);
       }
     },
 
-    activateHeightMeasure() {
-      this.measureHandler = new ScreenSpaceEventHandler(
-        this.viewer.scene.canvas,
-      );
-
-      this.measureHandler.setInputAction(
-        (click) => this.handleHeightClick(click),
-        ScreenSpaceEventType.LEFT_CLICK,
-      );
-
-      this.measureHandler.setInputAction(
-        (movement) => this.handleHeightMouseMove(movement),
-        ScreenSpaceEventType.MOUSE_MOVE,
-      );
-
-      this.measureHandler.setInputAction(
-        () => this.cancelCurrentHeightMeasurement(),
-        ScreenSpaceEventType.RIGHT_CLICK,
-      );
-    },
-
-    deactivateHeightMeasure() {
-      if (this.measureHandler) {
-        this.measureHandler.destroy();
-        this.measureHandler = null;
-      }
-
-      if (this.dynamicMeasureLine) {
-        this.viewer.entities.remove(this.dynamicMeasureLine);
-        this.dynamicMeasureLine = null;
-      }
-
-      this.firstMeasurePoint = null;
-    },
-
-    handleHeightClick(click) {
-      const pickedPos = this.viewer.scene.pickPosition(click.position);
-      if (!pickedPos) {
-        this.showNotification("Không thể xác định vị trí từ click!", "warning");
-        return;
-      }
-
-      if (!this.firstMeasurePoint) {
-        this.firstMeasurePoint = pickedPos;
-        this.addHeightPointMarker(this.firstMeasurePoint, Color.RED, "Điểm A");
-
-        this.dynamicMeasureLine = this.viewer.entities.add({
-          polyline: {
-            positions: [this.firstMeasurePoint, this.firstMeasurePoint],
-            width: 3,
-            material: Color.YELLOW.withAlpha(0.5),
-          },
-        });
-      } else {
-        const secondPoint = pickedPos;
-        this.addHeightPointMarker(secondPoint, Color.BLUE, "Điểm B");
-        this.completeHeightMeasurement(this.firstMeasurePoint, secondPoint);
-
-        if (this.dynamicMeasureLine) {
-          this.viewer.entities.remove(this.dynamicMeasureLine);
-          this.dynamicMeasureLine = null;
-        }
-
-        this.firstMeasurePoint = null;
-      }
-    },
-
-    handleHeightMouseMove(movement) {
-      if (!this.firstMeasurePoint || !this.dynamicMeasureLine) return;
-
-      const pickedPos = this.viewer.scene.pickPosition(movement.endPosition);
-      if (!pickedPos) return;
-
-      this.dynamicMeasureLine.polyline.positions = [
-        this.firstMeasurePoint,
-        pickedPos,
-      ];
-    },
-
-    completeHeightMeasurement(pointA, pointB) {
-      const cartoA = Cartographic.fromCartesian(pointA);
-      const cartoB = Cartographic.fromCartesian(pointB);
-
-      const heightA = parseFloat(cartoA.height).toFixed(2);
-      const heightB = parseFloat(cartoB.height).toFixed(2);
-      const diff = (cartoB.height - cartoA.height).toFixed(2);
-
-      const line = this.viewer.entities.add({
-        polyline: {
-          positions: [pointA, pointB],
-          width: 4,
-          material: Color.ORANGE,
-        },
-      });
-
-      const midpoint = Cartesian3.midpoint(pointA, pointB, new Cartesian3());
-      const label = this.viewer.entities.add({
-        position: midpoint,
-        label: {
-          text: `Δh = ${diff} m\n(A: ${heightA}m → B: ${heightB}m)`,
-          font: "16px sans-serif",
-          fillColor: Color.WHITE,
-          showBackground: true,
-          backgroundColor: Color.BLACK.withAlpha(0.7),
-          pixelOffset: new Cartesian2(0, -30),
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-        },
-      });
-
-      this.measureLines.push(line);
-      this.measureLabels.push(label);
-
-      const resultMessage = `Đo chiều cao hoàn thành:\nĐiểm A: ${heightA}m\nĐiểm B: ${heightB}m\nChênh lệch: ${diff}m`;
-      this.showNotification(resultMessage, "success");
-    },
-
-    addHeightPointMarker(position, color, labelText) {
-      const carto = Cartographic.fromCartesian(position);
-      const height = parseFloat(carto.height).toFixed(2);
-
-      const point = this.viewer.entities.add({
-        position: position,
-        point: {
-          pixelSize: 12,
-          color: color,
-          outlineColor: Color.WHITE,
-          outlineWidth: 2,
-        },
-        label: {
-          text: `${labelText}: ${height} m`,
-          font: "14px sans-serif",
-          pixelOffset: new Cartesian2(0, -25),
-          fillColor: Color.YELLOW,
-          showBackground: true,
-          backgroundColor: Color.BLACK.withAlpha(0.5),
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-        },
-      });
-
-      this.measurePoints.push(point);
-      return point;
-    },
-
-    cancelCurrentHeightMeasurement() {
-      if (this.firstMeasurePoint) {
-        const lastPoint = this.measurePoints.pop();
-        if (lastPoint) {
-          this.viewer.entities.remove(lastPoint);
-        }
-
-        if (this.dynamicMeasureLine) {
-          this.viewer.entities.remove(this.dynamicMeasureLine);
-          this.dynamicMeasureLine = null;
-        }
-
-        this.firstMeasurePoint = null;
-        this.showNotification("Đã huỷ phép đo hiện tại", "info");
-      }
-    },
-
-    /* =========================
-       Lấy tọa độ điểm
-       ========================= */
+    // ============================================
+    // CÁC PHƯƠNG THỨC TỌA ĐỘ - SỬ DỤNG CoordinateSystem
+    // ============================================
     toggleLocatePoint() {
-      if (this.measureActive) {
-        this.deactivateHeightMeasure();
-        this.measureActive = false;
-      }
-
-      if (this.locateActive) {
-        this.deactivateLocatePoint();
-        this.locateActive = false;
-        this.showNotification("Chế độ lấy tọa độ đã tắt!", "success");
-      } else {
-        this.activateLocatePoint();
-        this.locateActive = true;
-        this.showNotification(
-          "Chế độ lấy tọa độ đã bật. Click vào bản đồ!",
-          "info",
-        );
+      if (this.coordinateSystem) {
+        this.coordinateSystem.toggleLocatePoint(this.measurementSystem);
       }
     },
 
-    activateLocatePoint() {
-      this.locateHandler = new ScreenSpaceEventHandler(
-        this.viewer.scene.canvas,
-      );
-
-      this.locateHandler.setInputAction(
-        (click) => this.handleCoordinateClick(click),
-        ScreenSpaceEventType.LEFT_CLICK,
-      );
-    },
-
-    deactivateLocatePoint() {
-      if (this.locateHandler) {
-        this.locateHandler.destroy();
-        this.locateHandler = null;
-      }
-    },
-
-    handleCoordinateClick(click) {
-      const cartesian = this.viewer.scene.pickPosition(click.position);
-      if (!cartesian) {
-        this.showNotification("Không thể xác định vị trí!", "warning");
-        return;
-      }
-
-      const carto = Cartographic.fromCartesian(cartesian);
-      const lon = CesiumMath.toDegrees(carto.longitude).toFixed(6);
-      const lat = CesiumMath.toDegrees(carto.latitude).toFixed(6);
-      const height = carto.height.toFixed(2);
-
-      const marker = this.addCoordinateMarker(cartesian, lat, lon, height);
-      this.coordMarkers.push(marker);
-
-      const coordMessage = `Tọa độ đã lấy:\nLat: ${lat}°\nLon: ${lon}°\nĐộ cao: ${height}m`;
-      this.showNotification(coordMessage, "success");
-
-      console.log(coordMessage);
-    },
-
-    addCoordinateMarker(position, lat, lon, height) {
-      const randomColor = Color.fromRandom({ alpha: 1.0 });
-
-      const marker = this.viewer.entities.add({
-        position: position,
-        point: {
-          pixelSize: 10,
-          color: randomColor,
-          outlineColor: Color.WHITE,
-          outlineWidth: 2,
-        },
-        label: {
-          text: `📍 ${
-            this.coordMarkers.length + 1
-          }\nLat: ${lat}°\nLon: ${lon}°\nH: ${height}m`,
-          font: "14px sans-serif",
-          showBackground: true,
-          backgroundColor: Color.BLACK.withAlpha(0.7),
-          fillColor: Color.YELLOW,
-          pixelOffset: new Cartesian2(0, -40),
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-        },
-        description: `Tọa độ điểm ${
-          this.coordMarkers.length + 1
-        }: ${lat}°, ${lon}°, ${height}m`,
-      });
-
-      return marker;
-    },
-
-    /* =========================
-       Xóa các phép đo
-       ========================= */
+    // ============================================
+    // XÓA TẤT CẢ PHÉP ĐO VÀ MARKER
+    // ============================================
     clearAllMeasurements() {
-      this.measurePoints.forEach((point) => {
-        if (point) this.viewer.entities.remove(point);
-      });
+      if (this.measurementSystem) {
+        this.measurementSystem.clearAllMeasurements();
+      }
 
-      this.measureLines.forEach((line) => {
-        if (line) this.viewer.entities.remove(line);
-      });
-
-      this.measureLabels.forEach((label) => {
-        if (label) this.viewer.entities.remove(label);
-      });
-
-      this.coordMarkers.forEach((marker) => {
-        if (marker) this.viewer.entities.remove(marker);
-      });
-
-      this.measurePoints = [];
-      this.measureLines = [];
-      this.measureLabels = [];
-      this.coordMarkers = [];
-
-      if (this.firstMeasurePoint) {
-        this.cancelCurrentHeightMeasurement();
+      if (this.coordinateSystem) {
+        this.coordinateSystem.clearAllMarkers();
       }
 
       const panelMeasure = document.getElementById("panelMeasure");
@@ -1218,11 +896,9 @@ export default {
       else alert("Viewshed đã tắt!");
     },
 
-    // ✅ Reload models cho cảnh đang hiện tại (gọi sau khi ObjectManager tạo model mới)
     async reloadCurrentScene() {
       if (this.lodManager && this.lodManager.currentLOD !== null) {
         const currentLOD = this.lodManager.currentLOD;
-        // Reset currentLOD để switchToLOD không bỏ qua (vì nó check "đã ở cảnh này")
         this.lodManager.currentLOD = null;
         await this.lodManager.switchToLOD(currentLOD);
         console.log("✅ Đã reload cảnh sau khi tạo model mới");
@@ -1231,20 +907,18 @@ export default {
       }
     },
 
-    // ✅ THÊM: Toggle auto-switch (bật/tắt)
     toggleAutoSwitch() {
       if (this.lodManager) {
         const isEnabled = this.lodManager.toggleAutoSwitch();
         this.showNotification(
           `Tự động chuyển cảnh ${isEnabled ? "đã bật" : "đã tắt"}`,
-          isEnabled ? "success" : "info"
+          isEnabled ? "success" : "info",
         );
         return isEnabled;
       }
       return false;
     },
 
-    // ✅ THÊM: Phương thức hiển thị thông tin cảnh hiện tại
     showCurrentLODInfo() {
       if (!this.lodManager) {
         this.showNotification("LOD Manager chưa được khởi tạo", "warning");
@@ -1252,8 +926,7 @@ export default {
       }
 
       const lodInfo = this.lodManager.getCurrentLODInfo();
-      
-      // Xóa thông tin cũ nếu có
+
       const oldDisplay = document.querySelector(".lod-info-display");
       if (oldDisplay) {
         oldDisplay.remove();
@@ -1356,8 +1029,24 @@ export default {
   },
 
   beforeUnmount() {
-    if (this.measureHandler) this.measureHandler.destroy();
-    if (this.locateHandler) this.locateHandler.destroy();
+    // Dọn dẹp Measurement System
+    if (this.measurementSystem) {
+      this.measurementSystem.destroy();
+      this.measurementSystem = null;
+    }
+
+    // Dọn dẹp Coordinate System
+    if (this.coordinateSystem) {
+      this.coordinateSystem.destroy();
+      this.coordinateSystem = null;
+    }
+
+    // Dọn dẹp Navigation Control
+    if (this.navigationControl) {
+      this.navigationControl.destroy();
+      this.navigationControl = null;
+    }
+
     if (this.attrHandler) this.attrHandler.destroy();
 
     // Dọn dẹp LOD Manager
@@ -1373,5 +1062,3 @@ export default {
     console.log("✅ Đã dọn dẹp tất cả tài nguyên Map.js");
   },
 };
-
-// Phước Tân
