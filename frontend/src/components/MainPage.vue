@@ -9,7 +9,10 @@
     </div>
 
     <!-- MODEL TYPE MANAGER -->
-    <div class="content-container full-height" v-if="currentView === 'model-manager'">
+    <div
+      class="content-container full-height"
+      v-if="currentView === 'model-manager'"
+    >
       <ModelTypeManager />
     </div>
 
@@ -27,13 +30,19 @@
     </div>
 
     <!-- CÁC VIEW KHÁC — v-if độc lập, không dùng v-else -->
-    <div class="content-container full-height" v-if="currentView === 'dashboard'">
+    <div
+      class="content-container full-height"
+      v-if="currentView === 'dashboard'"
+    >
       <Dashboard />
     </div>
     <div class="content-container full-height" v-if="currentView === 'reports'">
       <Reports />
     </div>
-    <div class="content-container full-height" v-if="currentView === 'settings'">
+    <div
+      class="content-container full-height"
+      v-if="currentView === 'settings'"
+    >
       <Settings />
     </div>
 

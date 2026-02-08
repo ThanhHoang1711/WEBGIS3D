@@ -2,25 +2,27 @@
 import * as Cesium from "cesium";
 
 export default class NavigationControl {
-  constructor(viewer) {
+  constructor(viewer, containerElement = null) {
     this.viewer = viewer;
+    this.containerElement = containerElement; // ✅ Container cha (cesiumContainer hoặc body)
     this.rotationSpeed = 0.5; // Độ mỗi lần nhấn
     this.tiltSpeed = 5; // Độ nghiêng mỗi lần nhấn
     this.continuousRotation = false;
     this.rotationInterval = null;
     this.currentRotationDirection = null;
+    this.navContainer = null; // ✅ Lưu reference để destroy sau
 
     this.initializeNavigation();
   }
 
   initializeNavigation() {
     // Tạo container cho điều hướng
-    const navContainer = document.createElement("div");
-    navContainer.id = "navigationControl";
-    navContainer.className = "navigation-container";
+    this.navContainer = document.createElement("div");
+    this.navContainer.id = "navigationControl";
+    this.navContainer.className = "navigation-container";
 
     // HTML cho các nút điều hướng với icon từ assets
-    navContainer.innerHTML = `
+    this.navContainer.innerHTML = `
       <div class="navigation-wrapper">
         <div class="navigation-row">
           <button class="nav-btn" id="navTiltUp" title="Nâng lên">
@@ -77,7 +79,10 @@ export default class NavigationControl {
       </div>
     `;
 
-    document.body.appendChild(navContainer);
+    // ✅ FIXED: Thêm vào container cụ thể thay vì body
+    const targetContainer = this.containerElement || document.body;
+    targetContainer.appendChild(this.navContainer);
+
     this.setupEventListeners();
   }
 
@@ -243,7 +248,6 @@ export default class NavigationControl {
     }
   }
 
-  // Tìm phương thức resetView() và sửa như sau:
   resetView() {
     if (!this.viewer) return;
     const Degrees = Cesium.Math.toRadians(20); //góc reset
@@ -267,9 +271,10 @@ export default class NavigationControl {
   destroy() {
     this.stopContinuousRotation();
 
-    const navContainer = document.getElementById("navigationControl");
-    if (navContainer) {
-      navContainer.remove();
+    // ✅ FIXED: Xóa navContainer khỏi DOM
+    if (this.navContainer && this.navContainer.parentNode) {
+      this.navContainer.parentNode.removeChild(this.navContainer);
+      this.navContainer = null;
     }
   }
 }

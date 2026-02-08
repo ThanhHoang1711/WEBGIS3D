@@ -659,9 +659,13 @@ export default {
         );
         console.log("✅ Coordinate System đã khởi tạo");
 
-        // 5. KHỞI TẠO NAVIGATION CONTROL
-        this.navigationControl = new NavigationControl(this.viewer);
-        console.log("✅ Navigation Control đã khởi tạo");
+        // 5. KHỞI TẠO NAVIGATION CONTROL - ✅ Truyền container để chỉ hiện trong MapView
+        const cesiumContainer = document.getElementById("cesiumContainer");
+        this.navigationControl = new NavigationControl(
+          this.viewer,
+          cesiumContainer,
+        );
+        console.log("✅ Navigation Control đã khởi tạo (chỉ trong MapView)");
 
         // 6. THIẾT LẬP CÁC NÚT CHỨC NĂNG
         this.setupMeasureButton();
@@ -1062,3 +1066,5 @@ export default {
     console.log("✅ Đã dọn dẹp tất cả tài nguyên Map.js");
   },
 };
+
+// Phước Tân
