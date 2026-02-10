@@ -16,20 +16,47 @@
       <ModelTypeManager />
     </div>
 
-    <!-- OBJECT MANAGER - v-show để giữ alive khi nhảy về map chọn vị trí -->
+    <!-- ✅ CÁC OBJECT MANAGER RIÊNG BIỆT -->
+    <!-- Công Trình Manager -->
     <div
       class="content-container full-height"
-      v-show="currentView === 'object-manager' && !pickingPosition"
+      v-show="currentView === 'cong-trinh-manager' && !pickingPosition"
     >
-      <ObjectManager
-        ref="objectManager"
+      <CongTrinhManager
+        ref="congTrinhManager"
         @request-position-pick="handleRequestPositionPick"
         @navigate-to="handleNavigateTo"
         @object-created="handleObjectCreated"
       />
     </div>
 
-    <!-- CÁC VIEW KHÁC — v-if độc lập, không dùng v-else -->
+    <!-- Cây Manager -->
+    <div
+      class="content-container full-height"
+      v-show="currentView === 'cay-manager' && !pickingPosition"
+    >
+      <CayManager
+        ref="cayManager"
+        @request-position-pick="handleRequestPositionPick"
+        @navigate-to="handleNavigateTo"
+        @object-created="handleObjectCreated"
+      />
+    </div>
+
+    <!-- Chuyển Động Manager -->
+    <div
+      class="content-container full-height"
+      v-show="currentView === 'chuyen-dong-manager' && !pickingPosition"
+    >
+      <ChuyenDongManager
+        ref="chuyenDongManager"
+        @request-position-pick="handleRequestPositionPick"
+        @navigate-to="handleNavigateTo"
+        @object-created="handleObjectCreated"
+      />
+    </div>
+
+    <!-- CÁC VIEW KHÁC -->
     <div
       class="content-container full-height"
       v-if="currentView === 'dashboard'"
@@ -46,7 +73,7 @@
       <Settings />
     </div>
 
-    <!-- ✅ OVERLAY: Báo user đang chọn vị trí cho ObjectManager -->
+    <!-- ✅ OVERLAY: Báo user đang chọn vị trí -->
     <div v-if="pickingPosition" class="pick-position-overlay">
       <div class="pick-position-banner">
         <span class="pick-icon">📍</span>
@@ -74,7 +101,9 @@
 import MapView from "./MapView.vue";
 import Sidebar from "./Sidebar.vue";
 import ModelTypeManager from "./ModelTypeManager.vue";
-import ObjectManager from "./ObjectManager.vue";
+import CongTrinhManager from "./CongTrinhManager.vue";
+import CayManager from "./CayManager.vue";
+import ChuyenDongManager from "./ChuyenDongManager.vue";
 import Dashboard from "./Dashboard.vue";
 import Reports from "./Reports.vue";
 import Settings from "./Settings.vue";
@@ -93,7 +122,9 @@ export default {
     MapView,
     Sidebar,
     ModelTypeManager,
-    ObjectManager,
+    CongTrinhManager,
+    CayManager,
+    ChuyenDongManager,
     Dashboard,
     Reports,
     Settings,
@@ -120,9 +151,10 @@ export default {
       currentView: "maps",
 
       // ✅ State cho flow chọn vị trí
-      pickingPosition: false, // đang ở mode chọn điểm trên map
-      pickPositionCallback: null, // callback để trả kết quả về ObjectManager
-      pickHandler: null, // ScreenSpaceEventHandler
+      pickingPosition: false,
+      pickPositionCallback: null,
+      pickHandler: null,
+      previousView: null, // Lưu view trước khi chọn vị trí
     };
   },
   methods: {
@@ -140,7 +172,9 @@ export default {
           this.showContentPanel = false;
           break;
         case "model-manager":
-        case "object-manager":
+        case "cong-trinh-manager":
+        case "cay-manager":
+        case "chuyen-dong-manager":
         case "dashboard":
         case "reports":
         case "settings":
@@ -156,26 +190,21 @@ export default {
     },
 
     // =========================================================
-    // FLOW: ObjectManager yêu cầu chọn vị trí trên bản đồ
+    // FLOW: Manager yêu cầu chọn vị trí trên bản đồ
     // =========================================================
-
-    // 1. ObjectManager emit 'request-position-pick' kèm callback
     handleRequestPositionPick(callback) {
       this.pickPositionCallback = callback;
-      this.pickingPosition = true; // hiện map, ẩn ObjectManager
-      this.currentView = "maps"; // đảm bảo map container hiện
+      this.previousView = this.currentView; // Lưu view hiện tại
+      this.pickingPosition = true;
+      this.currentView = "maps";
 
-      // Chờ một tick để MapView render, rồi gắn handler
       this.$nextTick(() => {
         this.startPickingOnMap();
       });
     },
 
-    // 2. Gắn click handler lên Cesium viewer
     startPickingOnMap() {
       const mapView = this.$refs.mapView;
-      // Truy vào viewer từ MapView component
-      // Map.js export default có this.viewer -> truy bằng $data hoặc direct
       const viewer = mapView?.viewer;
 
       if (!viewer) {
@@ -202,26 +231,21 @@ export default {
 
         console.log("✅ Đã chọn vị trí:", position);
 
-        // 3. Trả kết quả về ObjectManager qua callback
         if (this.pickPositionCallback) {
           this.pickPositionCallback(position);
         }
 
-        // 4. Cleanup và quay về ObjectManager
         this.finishPickPosition();
       }, ScreenSpaceEventType.LEFT_CLICK);
 
       console.log("📍 Đang chờ click chọn vị trí trên bản đồ...");
     },
 
-    // 3. Hủy chọn vị trí (click nút Hủy trên overlay)
     cancelPickPosition() {
       this.finishPickPosition();
-      this.currentView = "object-manager"; // quay về ObjectManager
       console.log("🚫 Hủy chọn vị trí");
     },
 
-    // 4. Cleanup chung
     finishPickPosition() {
       if (this.pickHandler) {
         this.pickHandler.destroy();
@@ -230,14 +254,18 @@ export default {
       this.pickingPosition = false;
       this.pickPositionCallback = null;
 
-      // Quay về object-manager
-      this.currentView = "object-manager";
+      // Quay về view trước đó
+      if (this.previousView) {
+        this.currentView = this.previousView;
+        this.previousView = null;
+      }
     },
+
     // =========================================================
-    // Sau khi ObjectManager tạo model mới → reload map
+    // Sau khi Manager tạo model mới → reload map
     // =========================================================
     async handleObjectCreated(maCanh) {
-      console.log("📡 ObjectManager created object in scene:", maCanh);
+      console.log("📡 Manager created object in scene:", maCanh);
       const mapView = this.$refs.mapView;
       if (mapView && typeof mapView.reloadCurrentScene === "function") {
         await mapView.reloadCurrentScene();
@@ -248,7 +276,6 @@ export default {
   },
 
   beforeUnmount() {
-    // Dọn dẹp handler nếu còn
     if (this.pickHandler) {
       this.pickHandler.destroy();
       this.pickHandler = null;
@@ -265,44 +292,30 @@ export default {
   position: relative;
 }
 
-/* Map chiếm toàn màn hình */
-.map-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-}
-
-/* ✅ FIXED: Content container tự động fill khi sidebar toggle */
 .content-container {
   position: absolute;
   top: 0;
-  left: 200px; /* Bắt đầu từ cuối sidebar */
-  width: calc(100% - 200px); /* Chiếm phần còn lại */
+  left: 200px;
+  width: calc(100% - 200px);
   height: 100%;
   background-color: #ecf0f1;
   z-index: 1;
   overflow-y: auto;
   padding: 40px;
-  transition: left 0.3s ease, width 0.3s ease; /* Smooth transition */
+  transition: left 0.3s ease, width 0.3s ease;
 }
 
-/* Full height cho Object Manager */
 .content-container.full-height {
   padding: 0;
   overflow: hidden;
-  z-index: 2; /* đè lên map khi hiện */
+  z-index: 2;
 }
 
-/* ✅ Khi sidebar collapsed - TẤT CẢ content containers tự động fill */
 .main-page.sidebar-collapsed .content-container {
   left: 60px;
   width: calc(100% - 60px);
 }
 
-/* Sidebar đè lên map */
 .sidebar-overlay {
   position: absolute;
   top: 0;
@@ -320,7 +333,6 @@ export default {
   width: 60px;
 }
 
-/* ✅ Overlay báo chọn vị trí */
 .pick-position-overlay {
   position: fixed;
   inset: 0;
@@ -367,55 +379,6 @@ export default {
   background: #c62828;
 }
 
-/* Header */
-.main-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: rgba(248, 249, 250, 0.9);
-  padding: 1rem;
-  border-bottom: 1px solid #dee2e6;
-  min-height: 60px;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  z-index: 5;
-}
-
-.main-header h1 {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-/* Panel nội dung phụ */
-.content-panel {
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 350px;
-  height: 100%;
-  background-color: white;
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
-  z-index: 8;
-  overflow-y: auto;
-  padding: 20px;
-}
-
-/* Footer */
-.main-footer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background-color: rgba(248, 249, 250, 0.9);
-  padding: 0.5rem;
-  border-top: 1px solid #dee2e6;
-  min-height: 40px;
-  z-index: 5;
-}
-
-/* Responsive */
 @media (max-width: 768px) {
   .sidebar-overlay {
     position: fixed;
@@ -424,10 +387,6 @@ export default {
   .sidebar-overlay.collapsed {
     transform: translateX(-100%);
     width: 200px;
-  }
-
-  .content-panel {
-    width: 100%;
   }
 
   .content-container {
