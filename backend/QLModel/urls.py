@@ -1,7 +1,8 @@
 from django.urls import path
 from . import views_Canh
 from . import views_loaiMoHinh
-from . import views_QLDoiTuong  # ✅ Import thêm module QLDoiTuong
+from . import views_QLDoiTuong 
+from . import views_CongTrinh
 
 urlpatterns = [
     # ✅ API Cảnh
@@ -23,10 +24,14 @@ urlpatterns = [
     # Lấy danh sách parent options
     path('api/model-types/parent-options/', views_loaiMoHinh.get_parent_options, name='get_parent_options'),
 
-    # ✅ API Quản lý Đối Tượng - Thêm vào đây
+    # ✅ API Quản lý Đối Tượng
     path('api/doi-tuong/', views_QLDoiTuong.get_doi_tuong_list, name='get_doi_tuong_list'),
     path('api/doi-tuong/create/', views_QLDoiTuong.create_doi_tuong, name='create_doi_tuong'),
     path('api/doi-tuong/<int:doi_tuong_id>/delete/', views_QLDoiTuong.delete_doi_tuong, name='delete_doi_tuong'),
     path('api/canh/options/', views_QLDoiTuong.get_canh_options, name='get_canh_options'),
     path('api/loai-mo-hinh/options/', views_QLDoiTuong.get_loai_mo_hinh_options, name='get_loai_mo_hinh_options'),
+
+     # ✅ API CÔNG TRÌNH RIÊNG (MỚI)
+    path('api/cong-trinh/lod/', views_CongTrinh.get_cong_trinh_lod, name='get_cong_trinh_lod'),
+    path('api/cong-trinh/stats/lod/', views_CongTrinh.get_cong_trinh_stats_by_lod, name='get_cong_trinh_stats_lod'),
 ]
